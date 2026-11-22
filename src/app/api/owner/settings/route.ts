@@ -17,6 +17,7 @@ import {
   getEffectiveNow,
 } from "@/lib/dashboard-service";
 import { buildSettingsView } from "@/lib/domain";
+import { UI_COPY } from "@/lib/copy";
 import type { HouseholdSettingsRecord } from "@/lib/types";
 import { parseJsonBody, problemResponse, requireHouseholdAuth } from "@/app/api/_shared";
 
@@ -25,11 +26,17 @@ const TimeStringSchema = z
   .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Time must be HH:MM (24-hour).");
 
 const CaregiverUpdateSchema = z.object({
-  id: z.string().min(1),
-  slug: z.string().min(1),
-  displayName: z.string().min(1).max(32),
+  id: z.string().trim().min(1).max(40),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, or dashes.")
+    .min(1)
+    .max(32),
+  displayName: z.string().trim().min(1).max(32),
   role: z.enum(["helper", "family", "owner"]),
-  avatarInitials: z.string().min(1).max(4),
+  avatarInitials: z.string().trim().min(1).max(4),
   avatarColor: z.enum(["helper", "mom", "dad", "sibling", "owner"]),
   isActive: z.boolean(),
 });
@@ -83,7 +90,42 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   const data = parsed.data;
 
   if (data.caregivers) {
-    for (const cg of data.caregivers) {
+    const existing = await repo.listCaregivers();
+    const mergedById = new Map(existing.map((c) => [c.id, c]));
+    const normalizedUpdates = data.caregivers.map((cg) => ({
+      ...cg,
+      avatarInitials: cg.avatarInitials.toUpperCase(),
+    }));
+    for (const cg of normalizedUpdates) {
+      mergedById.set(cg.id, cg);
+    }
+
+    const resultingRoster = Array.from(mergedById.values());
+    const seenSlugs = new Set<string>();
+    for (const cg of resultingRoster) {
+      const normalizedSlug = cg.slug.toLowerCase();
+      if (seenSlugs.has(normalizedSlug)) {
+        return problemResponse(
+          400,
+          "Bad Request",
+          UI_COPY.ownerSettings.duplicateSlugError,
+        );
+      }
+      seenSlugs.add(normalizedSlug);
+    }
+
+    const activeOwners = resultingRoster.filter(
+      (c) => c.role === "owner" && c.isActive,
+    );
+    if (activeOwners.length === 0) {
+      return problemResponse(
+        400,
+        "Bad Request",
+        UI_COPY.ownerSettings.lastOwnerError,
+      );
+    }
+
+    for (const cg of normalizedUpdates) {
       await repo.upsertCaregiver(cg);
     }
   }

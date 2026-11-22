@@ -166,5 +166,47 @@ export function runCareRepositoryContractSuite(
         await repo.hasNotificationDispatch("meal:2026-11-20:AM:T0_HELPER"),
       ).toBe(false);
     });
+
+    it("deletes unused caregivers and blocks deletion when history or last owner", async () => {
+      const repo = await createRepo();
+
+      expect(await repo.deleteCaregiverIfUnused("missing-id")).toEqual({
+        deleted: false,
+        reason: "not_found",
+      });
+
+      expect(await repo.deleteCaregiverIfUnused("jed")).toEqual({
+        deleted: false,
+        reason: "last_owner",
+      });
+
+      // Seeded supplies are updatedById: "jed"; test feeding log history on "ate"
+      await repo.logFeedingAtomic({
+        slotKey: "2026-11-20:AM",
+        serviceDate: "2026-11-20",
+        period: "AM",
+        dueAtIso: "2026-11-20T02:00:00.000Z",
+        completedById: "ate",
+        completedAtIso: "2026-11-20T02:05:00.000Z",
+      });
+      expect(await repo.deleteCaregiverIfUnused("ate")).toEqual({
+        deleted: false,
+        reason: "has_history",
+      });
+
+      await repo.upsertCaregiver({
+        id: "sitter",
+        slug: "sitter",
+        displayName: "Sitter",
+        role: "helper",
+        avatarInitials: "SI",
+        avatarColor: "sibling",
+        isActive: true,
+      });
+      expect(await repo.deleteCaregiverIfUnused("sitter")).toEqual({
+        deleted: true,
+      });
+      expect(await repo.getCaregiverById("sitter")).toBeNull();
+    });
   });
 }

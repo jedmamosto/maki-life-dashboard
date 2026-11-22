@@ -265,11 +265,16 @@ export interface UpdateSupplyResult {
   shouldAlertLevel: "LOW" | "EMPTY" | null;
 }
 
+export type DeleteCaregiverResult =
+  | { deleted: true }
+  | { deleted: false; reason: "not_found" | "has_history" | "last_owner" };
+
 export interface CareRepository {
   listCaregivers(): Promise<Caregiver[]>;
   getCaregiverById(id: string): Promise<Caregiver | null>;
   getCaregiverBySlug(slug: string): Promise<Caregiver | null>;
   upsertCaregiver(input: Caregiver): Promise<Caregiver>;
+  deleteCaregiverIfUnused(id: string): Promise<DeleteCaregiverResult>;
 
   getSettings(): Promise<HouseholdSettingsRecord>;
   updateSettings(

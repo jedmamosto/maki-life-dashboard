@@ -8,6 +8,7 @@ import {
   POST as postOwnerPin,
 } from "@/app/api/owner/pin/route";
 import { PATCH as patchOwnerSettings } from "@/app/api/owner/settings/route";
+import { DELETE as deleteOwnerCaregiver } from "@/app/api/owner/caregivers/[id]/route";
 import { POST as postTestReset } from "@/app/api/test/reset/route";
 import { verifyHouseholdToken } from "@/lib/auth";
 import { proxy } from "@/proxy";
@@ -223,5 +224,148 @@ describe("API integration: household proxy, PIN lockout, owner settings, test re
       process.env.ENABLE_TEST_HARNESS = prevFlag;
       (process.env as Record<string, string | undefined>).NODE_ENV = prevNodeEnv;
     }
+  });
+
+  it("manages and customizes household people with PIN guard and safe delete", async () => {
+    // Unlock owner PIN
+    const pinRes = await postOwnerPin(
+      await harness.authedRequest("/api/owner/pin", {
+        method: "POST",
+        body: JSON.stringify({ pin: "1234" }),
+      }),
+    );
+    expect(pinRes.status).toBe(200);
+    const pinCookie = pinRes.headers.get("set-cookie")?.split(";")[0] ?? "";
+    const ownerCookies = `maki_household=${await (async () => {
+      const s = await postAuthSession(
+        new Request("http://localhost:3000/api/auth/session", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token: "maki-test-household-token" }),
+        }),
+      );
+      return s.headers.get("set-cookie")?.split(";")[0].split("=").slice(1).join("=") ?? "";
+    })()}; ${pinCookie}`;
+
+    // Delete without PIN -> 403
+    const unpinnedDelete = await deleteOwnerCaregiver(
+      await harness.authedRequest("/api/owner/caregivers/mom", {
+        method: "DELETE",
+      }),
+      { params: Promise.resolve({ id: "mom" }) },
+    );
+    expect(unpinnedDelete.status).toBe(403);
+
+    // Add a new person with custom initials, color, and role
+    const addRes = await patchOwnerSettings(
+      await harness.authedRequest("/api/owner/settings", {
+        method: "PATCH",
+        rawCookies: ownerCookies,
+        body: JSON.stringify({
+          caregivers: [
+            {
+              id: "lola",
+              slug: "lola",
+              displayName: "Lola",
+              role: "family",
+              avatarInitials: "la",
+              avatarColor: "sibling",
+              isActive: true,
+            },
+          ],
+        }),
+      }),
+    );
+    expect(addRes.status).toBe(200);
+    const addData = await addRes.json();
+    const lola = addData.snapshot.caregivers.find(
+      (c: { id: string }) => c.id === "lola",
+    );
+    expect(lola).toMatchObject({
+      displayName: "Lola",
+      role: "family",
+      avatarInitials: "LA",
+      avatarColor: "sibling",
+      isActive: true,
+    });
+
+    // Reject deactivating the last active owner
+    const deactivateOwnerRes = await patchOwnerSettings(
+      await harness.authedRequest("/api/owner/settings", {
+        method: "PATCH",
+        rawCookies: ownerCookies,
+        body: JSON.stringify({
+          caregivers: [
+            {
+              id: "jed",
+              slug: "jed",
+              displayName: "Jed",
+              role: "owner",
+              avatarInitials: "JD",
+              avatarColor: "owner",
+              isActive: false,
+            },
+          ],
+        }),
+      }),
+    );
+    expect(deactivateOwnerRes.status).toBe(400);
+
+    // Reject duplicate slug across different ids
+    const dupSlugRes = await patchOwnerSettings(
+      await harness.authedRequest("/api/owner/settings", {
+        method: "PATCH",
+        rawCookies: ownerCookies,
+        body: JSON.stringify({
+          caregivers: [
+            {
+              id: "another",
+              slug: "lola",
+              displayName: "Another",
+              role: "helper",
+              avatarInitials: "AN",
+              avatarColor: "helper",
+              isActive: true,
+            },
+          ],
+        }),
+      }),
+    );
+    expect(dupSlugRes.status).toBe(400);
+
+    // Delete unused person -> 200
+    const deleteLolaRes = await deleteOwnerCaregiver(
+      await harness.authedRequest("/api/owner/caregivers/lola", {
+        method: "DELETE",
+        rawCookies: ownerCookies,
+      }),
+      { params: Promise.resolve({ id: "lola" }) },
+    );
+    expect(deleteLolaRes.status).toBe(200);
+    const deleteData = await deleteLolaRes.json();
+    expect(
+      deleteData.snapshot.caregivers.some(
+        (c: { id: string }) => c.id === "lola",
+      ),
+    ).toBe(false);
+
+    // Delete person with history ("jed" has default supply records) -> 400 last_owner,
+    // and "ate" with a feeding log -> 409 has_history
+    await harness.repo.logFeedingAtomic({
+      slotKey: "2026-11-20:AM",
+      serviceDate: "2026-11-20",
+      period: "AM",
+      dueAtIso: "2026-11-20T02:00:00.000Z",
+      completedById: "ate",
+      completedAtIso: "2026-11-20T02:05:00.000Z",
+    });
+    const deleteAteRes = await deleteOwnerCaregiver(
+      await harness.authedRequest("/api/owner/caregivers/ate", {
+        method: "DELETE",
+        rawCookies: ownerCookies,
+      }),
+      { params: Promise.resolve({ id: "ate" }) },
+    );
+    expect(deleteAteRes.status).toBe(409);
   });
 });

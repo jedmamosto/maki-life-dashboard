@@ -7,6 +7,7 @@ import type {
   CareRepository,
   Caregiver,
   CaregiverRole,
+  DeleteCaregiverResult,
   FeedMealResult,
   FeedingLogRecord,
   FeedingPeriod,
@@ -215,6 +216,41 @@ export class MemoryCareRepository implements CareRepository {
       }
       await this.writeState(store);
       return { ...copy };
+    });
+  }
+
+  public async deleteCaregiverIfUnused(
+    id: string,
+  ): Promise<DeleteCaregiverResult> {
+    return this.mutex.runExclusive(async () => {
+      const store = await this.readState();
+      const target = store.caregivers.find((c) => c.id === id);
+      if (!target) {
+        return { deleted: false, reason: "not_found" };
+      }
+
+      if (target.role === "owner" && target.isActive) {
+        const activeOwners = store.caregivers.filter(
+          (c) => c.role === "owner" && c.isActive,
+        );
+        if (activeOwners.length <= 1) {
+          return { deleted: false, reason: "last_owner" };
+        }
+      }
+
+      const hasHistory =
+        store.feedingLogs.some((row) => row.completedById === id) ||
+        store.careEvents.some((row) => row.caregiverId === id) ||
+        store.supplies.some((row) => row.updatedById === id) ||
+        store.pushSubscriptions.some((row) => row.caregiverId === id);
+
+      if (hasHistory) {
+        return { deleted: false, reason: "has_history" };
+      }
+
+      store.caregivers = store.caregivers.filter((c) => c.id !== id);
+      await this.writeState(store);
+      return { deleted: true };
     });
   }
 

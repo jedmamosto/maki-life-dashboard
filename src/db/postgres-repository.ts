@@ -9,6 +9,7 @@ import type {
   CareRepository,
   Caregiver,
   CaregiverRole,
+  DeleteCaregiverResult,
   DispatchChannel,
   DispatchStatus,
   FeedMealResult,
@@ -269,6 +270,68 @@ export class PostgresCareRepository implements CareRepository {
       })
       .returning();
     return mapCaregiverRow(rows[0]);
+  }
+
+  public async deleteCaregiverIfUnused(
+    id: string,
+  ): Promise<DeleteCaregiverResult> {
+    const db = await this.ensureSeeded();
+    return db.transaction(async (tx) => {
+      const targetRows = await tx
+        .select()
+        .from(schema.caregivers)
+        .where(eq(schema.caregivers.id, id))
+        .limit(1);
+      const target = targetRows[0];
+      if (!target) {
+        return { deleted: false, reason: "not_found" };
+      }
+
+      if (target.role === "owner" && target.isActive) {
+        const allCaregivers = await tx.select().from(schema.caregivers);
+        const activeOwners = allCaregivers.filter(
+          (c) => c.role === "owner" && c.isActive,
+        );
+        if (activeOwners.length <= 1) {
+          return { deleted: false, reason: "last_owner" };
+        }
+      }
+
+      const [feedingRef, eventRef, supplyRef, pushRef] = await Promise.all([
+        tx
+          .select({ id: schema.feedingLogs.id })
+          .from(schema.feedingLogs)
+          .where(eq(schema.feedingLogs.completedById, id))
+          .limit(1),
+        tx
+          .select({ id: schema.careEvents.id })
+          .from(schema.careEvents)
+          .where(eq(schema.careEvents.caregiverId, id))
+          .limit(1),
+        tx
+          .select({ supplyKey: schema.supplies.supplyKey })
+          .from(schema.supplies)
+          .where(eq(schema.supplies.updatedById, id))
+          .limit(1),
+        tx
+          .select({ id: schema.pushSubscriptions.id })
+          .from(schema.pushSubscriptions)
+          .where(eq(schema.pushSubscriptions.caregiverId, id))
+          .limit(1),
+      ]);
+
+      if (
+        feedingRef.length > 0 ||
+        eventRef.length > 0 ||
+        supplyRef.length > 0 ||
+        pushRef.length > 0
+      ) {
+        return { deleted: false, reason: "has_history" };
+      }
+
+      await tx.delete(schema.caregivers).where(eq(schema.caregivers.id, id));
+      return { deleted: true };
+    });
   }
 
   public async getSettings(): Promise<HouseholdSettingsRecord> {

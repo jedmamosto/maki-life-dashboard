@@ -9,17 +9,65 @@ import {
   Copy,
   Loader2,
   Lock,
+  Plus,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
-import type { Caregiver, DashboardSnapshot } from "@/lib/types";
+import type {
+  AvatarColorKey,
+  Caregiver,
+  CaregiverRole,
+  DashboardSnapshot,
+} from "@/lib/types";
 import { UI_COPY } from "@/lib/copy";
 import { CaregiverBadge } from "./CaregiverBadge";
 import {
+  AVATAR_COLOR_MAP,
   CareApiError,
   apiFetch,
   copyTextSafely,
   useClientOrigin,
 } from "./care-client";
+
+const AVATAR_COLOR_KEYS: AvatarColorKey[] = [
+  "helper",
+  "mom",
+  "dad",
+  "sibling",
+  "owner",
+];
+
+const CAREGIVER_ROLES: CaregiverRole[] = ["helper", "family", "owner"];
+
+function deriveInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  }
+  const compact = name.trim().replace(/[^a-zA-Z0-9]/g, "");
+  return (compact.slice(0, 2) || "MK").toUpperCase();
+}
+
+function buildUniqueSlug(name: string, existing: Caregiver[]): string {
+  const base =
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 24) || "person";
+  const taken = new Set(
+    existing.flatMap((c) => [c.slug.toLowerCase(), c.id.toLowerCase()]),
+  );
+  if (!taken.has(base)) {
+    return base;
+  }
+  let suffix = 2;
+  while (taken.has(`${base}-${suffix}`)) {
+    suffix += 1;
+  }
+  return `${base}-${suffix}`;
+}
 
 interface OwnerSettingsPanelProps {
   token: string;
@@ -60,6 +108,11 @@ export function OwnerSettingsPanel({
     initialSnapshot.caregivers
   );
   const [newPin, setNewPin] = useState("");
+  const [newPersonName, setNewPersonName] = useState("");
+  const [newPersonInitials, setNewPersonInitials] = useState("");
+  const [newPersonInitialsTouched, setNewPersonInitialsTouched] = useState(false);
+  const [newPersonRole, setNewPersonRole] = useState<CaregiverRole>("helper");
+  const [newPersonColor, setNewPersonColor] = useState<AvatarColorKey>("sibling");
   const origin = useClientOrigin();
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
   const [confirmRotate, setConfirmRotate] = useState(false);
@@ -142,16 +195,21 @@ export function OwnerSettingsPanel({
         {
           method: "PATCH",
           body: JSON.stringify({
-            caregivers: caregivers.map((c) => ({
-              id: c.id,
-              slug: c.slug,
-              displayName: c.displayName.trim() || c.slug,
-              role: c.role,
-              avatarInitials:
-                (c.displayName.trim().slice(0, 2) || c.avatarInitials).toUpperCase(),
-              avatarColor: c.avatarColor,
-              isActive: c.isActive,
-            })),
+            caregivers: caregivers.map((c) => {
+              const cleanName = c.displayName.trim() || c.slug;
+              const cleanInitials =
+                c.avatarInitials.trim().slice(0, 2).toUpperCase() ||
+                deriveInitials(cleanName);
+              return {
+                id: c.id,
+                slug: c.slug,
+                displayName: cleanName,
+                role: c.role,
+                avatarInitials: cleanInitials,
+                avatarColor: c.avatarColor,
+                isActive: c.isActive,
+              };
+            }),
           }),
         }
       );
@@ -159,6 +217,94 @@ export function OwnerSettingsPanel({
         syncFromSnapshot(result.snapshot);
       }
       setStatusMessage(UI_COPY.ownerSettings.savedSettings);
+    } catch (err) {
+      if (err instanceof CareApiError && err.status === 401) {
+        onLocked();
+        return;
+      }
+      setErrorBanner(
+        err instanceof CareApiError
+          ? err.message
+          : UI_COPY.syncStates.offlineBody
+      );
+    } finally {
+      setSavingSection(null);
+    }
+  };
+
+  const handleAddPerson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = newPersonName.trim();
+    if (!cleanName) {
+      return;
+    }
+    const slug = buildUniqueSlug(cleanName, caregivers);
+    const cleanInitials =
+      newPersonInitials.trim().slice(0, 2).toUpperCase() ||
+      deriveInitials(cleanName);
+
+    const newCaregiver: Caregiver = {
+      id: slug,
+      slug,
+      displayName: cleanName,
+      role: newPersonRole,
+      avatarInitials: cleanInitials,
+      avatarColor: newPersonColor,
+      isActive: true,
+    };
+
+    setSavingSection("add-person");
+    setErrorBanner(null);
+    setStatusMessage(null);
+    try {
+      const result = await apiFetch<{ snapshot: DashboardSnapshot }>(
+        token,
+        "/api/owner/settings",
+        {
+          method: "PATCH",
+          body: JSON.stringify({ caregivers: [newCaregiver] }),
+        }
+      );
+      if (result.snapshot) {
+        syncFromSnapshot(result.snapshot);
+      }
+      setNewPersonName("");
+      setNewPersonInitials("");
+      setNewPersonInitialsTouched(false);
+      setNewPersonRole("helper");
+      setNewPersonColor("sibling");
+      setStatusMessage(UI_COPY.ownerSettings.savedSettings);
+    } catch (err) {
+      if (err instanceof CareApiError && err.status === 401) {
+        onLocked();
+        return;
+      }
+      setErrorBanner(
+        err instanceof CareApiError
+          ? err.message
+          : UI_COPY.syncStates.offlineBody
+      );
+    } finally {
+      setSavingSection(null);
+    }
+  };
+
+  const handleRemovePerson = async (person: Caregiver) => {
+    setSavingSection(`remove-${person.id}`);
+    setErrorBanner(null);
+    setStatusMessage(null);
+    try {
+      const result = await apiFetch<{ snapshot?: DashboardSnapshot }>(
+        token,
+        `/api/owner/caregivers/${encodeURIComponent(person.id)}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (result.snapshot) {
+        syncFromSnapshot(result.snapshot);
+      }
+      setStatusMessage(UI_COPY.ownerSettings.removedPerson);
     } catch (err) {
       if (err instanceof CareApiError && err.status === 401) {
         onLocked();
@@ -410,95 +556,224 @@ export function OwnerSettingsPanel({
 
       {/* Household People & Personal Links */}
       <section
-        aria-label="Household People"
+        aria-label={UI_COPY.ownerSettings.peopleTitle}
         className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4 sm:p-5 space-y-4"
       >
-        <h2 className="font-display text-lg font-bold text-[var(--ink-primary)]">
-          Household People
-        </h2>
+        <div>
+          <h2 className="font-display text-lg font-bold text-[var(--ink-primary)]">
+            {UI_COPY.ownerSettings.peopleTitle}
+          </h2>
+          <p className="text-xs font-medium text-[var(--ink-secondary)]">
+            {UI_COPY.ownerSettings.peopleSubtitle}
+          </p>
+        </div>
 
         <div className="space-y-3">
-          {caregivers.map((person, index) => (
-            <div
-              key={person.id}
-              className="rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3 space-y-2.5"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5">
-                  <CaregiverBadge
-                    initials={person.avatarInitials}
-                    colorKey={person.avatarColor}
-                    size="sm"
-                  />
-                  <span className="text-xs font-bold uppercase tracking-wide text-[var(--ink-tertiary)]">
-                    {UI_COPY.avatarPicker.roles[person.role]}
-                  </span>
+          {caregivers.map((person, index) => {
+            const activeOwnerCount = caregivers.filter(
+              (c) => c.role === "owner" && c.isActive
+            ).length;
+            const isSoleActiveOwner =
+              person.role === "owner" && person.isActive && activeOwnerCount <= 1;
+
+            return (
+              <div
+                key={person.id}
+                data-testid={`caregiver-row-${person.slug}`}
+                className="rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5 space-y-3"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <CaregiverBadge
+                      initials={person.avatarInitials}
+                      colorKey={person.avatarColor}
+                      size="sm"
+                    />
+                    <span className="text-xs font-bold uppercase tracking-wide text-[var(--ink-tertiary)]">
+                      {UI_COPY.avatarPicker.roles[person.role]}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleCopyPersonLink(person)}
+                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-xs font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                    >
+                      {copiedSlug === person.slug ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-[var(--sage-text)]" aria-hidden="true" />
+                          <span>{UI_COPY.setupView.copiedLinkCta}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span>Copy Link</span>
+                        </>
+                      )}
+                    </button>
+
+                    {!isSoleActiveOwner ? (
+                      <button
+                        type="button"
+                        disabled={Boolean(savingSection)}
+                        onClick={() => void handleRemovePerson(person)}
+                        data-testid={`remove-caregiver-${person.slug}`}
+                        aria-label={`${UI_COPY.ownerSettings.removeCta} ${person.displayName}`}
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[10px] border border-[var(--coral-border)] bg-white px-3 text-xs font-bold text-[var(--coral-strong)] hover:bg-[var(--coral-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral-text)] disabled:opacity-65"
+                      >
+                        {savingSection === `remove-${person.id}` ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        )}
+                        <span>{UI_COPY.ownerSettings.removeCta}</span>
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => void handleCopyPersonLink(person)}
-                  className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-xs font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
-                >
-                  {copiedSlug === person.slug ? (
-                    <>
-                      <Check className="h-3.5 w-3.5 text-[var(--sage-text)]" aria-hidden="true" />
-                      <span>{UI_COPY.setupView.copiedLinkCta}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                      <span>Copy Link</span>
-                    </>
-                  )}
-                </button>
-              </div>
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                  <div className="sm:col-span-5">
+                    <label
+                      className="block text-xs font-semibold text-[var(--ink-secondary)] mb-1"
+                      htmlFor={`caregiver-name-${person.id}`}
+                    >
+                      {UI_COPY.ownerSettings.nameLabel}
+                    </label>
+                    <input
+                      id={`caregiver-name-${person.id}`}
+                      type="text"
+                      maxLength={32}
+                      value={person.displayName}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setCaregivers((prev) =>
+                          prev.map((item, i) =>
+                            i === index ? { ...item, displayName: value } : item
+                          )
+                        );
+                      }}
+                      className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-sm font-semibold text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                    />
+                  </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="sr-only" htmlFor={`caregiver-name-${person.id}`}>
-                  Name for {person.slug}
-                </label>
-                <input
-                  id={`caregiver-name-${person.id}`}
-                  type="text"
-                  value={person.displayName}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setCaregivers((prev) =>
-                      prev.map((item, i) =>
-                        i === index ? { ...item, displayName: value } : item
-                      )
+                  <div className="sm:col-span-2">
+                    <label
+                      className="block text-xs font-semibold text-[var(--ink-secondary)] mb-1"
+                      htmlFor={`caregiver-initials-${person.id}`}
+                    >
+                      {UI_COPY.ownerSettings.initialsLabel}
+                    </label>
+                    <input
+                      id={`caregiver-initials-${person.id}`}
+                      type="text"
+                      maxLength={2}
+                      value={person.avatarInitials}
+                      onChange={(e) => {
+                        const value = e.target.value
+                          .replace(/[^a-zA-Z0-9]/g, "")
+                          .toUpperCase()
+                          .slice(0, 2);
+                        setCaregivers((prev) =>
+                          prev.map((item, i) =>
+                            i === index ? { ...item, avatarInitials: value } : item
+                          )
+                        );
+                      }}
+                      className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-center text-sm font-bold uppercase text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label
+                      className="block text-xs font-semibold text-[var(--ink-secondary)] mb-1"
+                      htmlFor={`caregiver-role-${person.id}`}
+                    >
+                      {UI_COPY.ownerSettings.roleLabel}
+                    </label>
+                    <select
+                      id={`caregiver-role-${person.id}`}
+                      value={person.role}
+                      disabled={isSoleActiveOwner}
+                      onChange={(e) => {
+                        const nextRole = e.target.value as CaregiverRole;
+                        setCaregivers((prev) =>
+                          prev.map((item, i) =>
+                            i === index ? { ...item, role: nextRole } : item
+                          )
+                        );
+                      }}
+                      className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-2.5 text-sm font-semibold text-[var(--ink-primary)] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                    >
+                      {CAREGIVER_ROLES.map((role) => (
+                        <option key={role} value={role}>
+                          {UI_COPY.avatarPicker.roles[role]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2 flex items-end">
+                    <label className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[10px] border border-[var(--border-hairline)] bg-white px-3 text-xs font-bold text-[var(--ink-primary)] cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={person.isActive}
+                        disabled={isSoleActiveOwner}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setCaregivers((prev) =>
+                            prev.map((item, i) =>
+                              i === index ? { ...item, isActive: checked } : item
+                            )
+                          );
+                        }}
+                        className="h-4 w-4 accent-[var(--sage-text)]"
+                      />
+                      <span>Active</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-semibold text-[var(--ink-secondary)] mr-1">
+                    {UI_COPY.ownerSettings.colorLabel}:
+                  </span>
+                  {AVATAR_COLOR_KEYS.map((colorKey) => {
+                    const selected = person.avatarColor === colorKey;
+                    return (
+                      <button
+                        key={colorKey}
+                        type="button"
+                        aria-pressed={selected}
+                        aria-label={`${UI_COPY.ownerSettings.colorLabel}: ${UI_COPY.ownerSettings.colorNames[colorKey]}`}
+                        onClick={() => {
+                          setCaregivers((prev) =>
+                            prev.map((item, i) =>
+                              i === index ? { ...item, avatarColor: colorKey } : item
+                            )
+                          );
+                        }}
+                        style={{ backgroundColor: AVATAR_COLOR_MAP[colorKey] }}
+                        className={`h-8 w-8 rounded-full flex items-center justify-center text-white kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] focus-visible:ring-offset-2 ${
+                          selected ? "ring-2 ring-[var(--ink-primary)] ring-offset-2" : "opacity-85 hover:opacity-100"
+                        }`}
+                      >
+                        {selected ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+                      </button>
                     );
-                  }}
-                  className="min-h-[44px] flex-1 min-w-[160px] rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-sm font-semibold text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
-                />
-
-                <label className="inline-flex min-h-[44px] items-center gap-2 rounded-[10px] border border-[var(--border-hairline)] bg-white px-3 text-xs font-bold text-[var(--ink-primary)] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={person.isActive}
-                    disabled={person.role === "owner"}
-                    onChange={(e) => {
-                      const checked = e.target.checked;
-                      setCaregivers((prev) =>
-                        prev.map((item, i) =>
-                          i === index ? { ...item, isActive: checked } : item
-                        )
-                      );
-                    }}
-                    className="h-4 w-4 accent-[var(--sage-text)]"
-                  />
-                  <span>Active</span>
-                </label>
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <button
           type="button"
           disabled={Boolean(savingSection)}
           onClick={() => void handleSaveRoster()}
+          data-testid="save-people-cta"
           className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-subtle)] px-4 font-display text-base font-bold text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] disabled:opacity-65"
         >
           {savingSection === "roster" ? (
@@ -506,6 +781,144 @@ export function OwnerSettingsPanel({
           ) : null}
           <span>Save People</span>
         </button>
+
+        {/* Add New Person */}
+        <form
+          onSubmit={(e) => void handleAddPerson(e)}
+          data-testid="add-person-form"
+          className="rounded-[12px] border border-dashed border-[var(--border-control)] bg-[var(--bg-canvas)] p-3.5 space-y-3"
+        >
+          <div className="flex items-center gap-2.5">
+            <CaregiverBadge
+              initials={
+                newPersonInitials.trim() ||
+                (newPersonName.trim() ? deriveInitials(newPersonName) : "MK")
+              }
+              colorKey={newPersonColor}
+              size="sm"
+            />
+            <h3 className="font-display text-sm font-bold text-[var(--ink-primary)]">
+              {UI_COPY.ownerSettings.addPersonTitle}
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            <div className="sm:col-span-5">
+              <label
+                className="block text-xs font-semibold text-[var(--ink-secondary)] mb-1"
+                htmlFor="new-person-name"
+              >
+                {UI_COPY.ownerSettings.nameLabel}
+              </label>
+              <input
+                id="new-person-name"
+                type="text"
+                required
+                maxLength={32}
+                placeholder={UI_COPY.ownerSettings.namePlaceholder}
+                value={newPersonName}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setNewPersonName(value);
+                  if (!newPersonInitialsTouched) {
+                    setNewPersonInitials(
+                      value.trim() ? deriveInitials(value) : ""
+                    );
+                  }
+                }}
+                className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-sm font-semibold text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label
+                className="block text-xs font-semibold text-[var(--ink-secondary)] mb-1"
+                htmlFor="new-person-initials"
+              >
+                {UI_COPY.ownerSettings.initialsLabel}
+              </label>
+              <input
+                id="new-person-initials"
+                type="text"
+                maxLength={2}
+                placeholder="MK"
+                value={newPersonInitials}
+                onChange={(e) => {
+                  const value = e.target.value
+                    .replace(/[^a-zA-Z0-9]/g, "")
+                    .toUpperCase()
+                    .slice(0, 2);
+                  setNewPersonInitialsTouched(value.length > 0);
+                  setNewPersonInitials(value);
+                }}
+                className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-center text-sm font-bold uppercase text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+              />
+            </div>
+
+            <div className="sm:col-span-5">
+              <label
+                className="block text-xs font-semibold text-[var(--ink-secondary)] mb-1"
+                htmlFor="new-person-role"
+              >
+                {UI_COPY.ownerSettings.roleLabel}
+              </label>
+              <select
+                id="new-person-role"
+                value={newPersonRole}
+                onChange={(e) =>
+                  setNewPersonRole(e.target.value as CaregiverRole)
+                }
+                className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-2.5 text-sm font-semibold text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+              >
+                {CAREGIVER_ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {UI_COPY.avatarPicker.roles[role]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-[var(--ink-secondary)] mr-1">
+                {UI_COPY.ownerSettings.colorLabel}:
+              </span>
+              {AVATAR_COLOR_KEYS.map((colorKey) => {
+                const selected = newPersonColor === colorKey;
+                return (
+                  <button
+                    key={colorKey}
+                    type="button"
+                    aria-pressed={selected}
+                    aria-label={`${UI_COPY.ownerSettings.colorLabel}: ${UI_COPY.ownerSettings.colorNames[colorKey]}`}
+                    onClick={() => setNewPersonColor(colorKey)}
+                    style={{ backgroundColor: AVATAR_COLOR_MAP[colorKey] }}
+                    className={`h-8 w-8 rounded-full flex items-center justify-center text-white kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] focus-visible:ring-offset-2 ${
+                      selected ? "ring-2 ring-[var(--ink-primary)] ring-offset-2" : "opacity-85 hover:opacity-100"
+                    }`}
+                  >
+                    {selected ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="submit"
+              disabled={Boolean(savingSection) || !newPersonName.trim()}
+              data-testid="add-person-cta"
+              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-[10px] bg-[var(--sage-text)] px-4 text-sm font-bold text-white hover:bg-[var(--sage-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] disabled:opacity-65"
+            >
+              {savingSection === "add-person" ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Plus className="h-4 w-4" aria-hidden="true" />
+              )}
+              <span>{UI_COPY.ownerSettings.addPersonCta}</span>
+            </button>
+          </div>
+        </form>
       </section>
 
       {/* Change PIN */}
