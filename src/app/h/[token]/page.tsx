@@ -1,6 +1,8 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { verifyHouseholdToken } from "@/lib/auth";
+import { buildHouseholdManifestUrl } from "@/lib/pwa-manifest";
 import { getDashboardSnapshot } from "@/lib/dashboard-service";
 import { AccessGate } from "@/components/AccessGate";
 import { CareQuestBoard } from "@/components/CareQuestBoard";
@@ -10,6 +12,21 @@ import { getRequestBaseUrl } from "@/components/server-origin";
 interface HouseholdPageProps {
   params: Promise<{ token: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: HouseholdPageProps): Promise<Metadata> {
+  const [{ token }, sp] = await Promise.all([params, searchParams]);
+  const isValid = await verifyHouseholdToken(token);
+  if (!isValid) {
+    return {};
+  }
+  const whoSlug = typeof sp.who === "string" ? sp.who : null;
+  return {
+    manifest: buildHouseholdManifestUrl(token, whoSlug),
+  };
 }
 
 export default function HouseholdBoardPage({

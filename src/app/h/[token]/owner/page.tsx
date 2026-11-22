@@ -1,6 +1,8 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { verifyHouseholdToken } from "@/lib/auth";
+import { buildHouseholdManifestUrl } from "@/lib/pwa-manifest";
 import { getDashboardSnapshot, getOwnerHistory } from "@/lib/dashboard-service";
 import { AccessGate } from "@/components/AccessGate";
 import { OwnerDashboardView } from "@/components/OwnerDashboardView";
@@ -9,6 +11,19 @@ import { getRequestBaseUrl } from "@/components/server-origin";
 
 interface OwnerPageProps {
   params: Promise<{ token: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: OwnerPageProps): Promise<Metadata> {
+  const { token } = await params;
+  const isValid = await verifyHouseholdToken(token);
+  if (!isValid) {
+    return {};
+  }
+  return {
+    manifest: buildHouseholdManifestUrl(token),
+  };
 }
 
 export default function OwnerPage({ params }: OwnerPageProps) {

@@ -203,4 +203,68 @@ test.describe("Auth, HttpOnly Cookie Isolation, Caregiver Identity, and PIN Gate
 
     trap.assertClean();
   });
+
+  test("dynamic PWA manifest preserves household token and caregiver slug for iOS and Android installs", async ({
+    page,
+    request,
+  }) => {
+    const trap = attachTelemetryTrap(page);
+
+    // Unauthenticated root and invalid token must not expose an installable manifest
+    await page.goto("/");
+    await expect(page.locator('link[rel="manifest"]')).toHaveCount(0);
+
+    await page.goto("/h/bad-token");
+    await expect(page.locator('link[rel="manifest"]')).toHaveCount(0);
+
+    const badManifestRes = await request.get("/h/bad-token/manifest");
+    expect(badManifestRes.status()).toBe(404);
+
+    // Valid personal link emits a single manifest pointing to /h/<token>/manifest?who=ate
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}?who=ate`);
+    const manifestLinks = page.locator('link[rel="manifest"]');
+    await expect(manifestLinks).toHaveCount(1);
+    const manifestHref = await manifestLinks.getAttribute("href");
+    expect(manifestHref).toBe(`/h/${HOUSEHOLD_TOKEN}/manifest?who=ate`);
+
+    // Fetch manifest without cookies (mirrors Android Chrome / iOS Safari manifest fetch)
+    const manifestRes = await request.get(manifestHref!, {
+      headers: { cookie: "" },
+    });
+    expect(manifestRes.status()).toBe(200);
+    expect(manifestRes.headers()["content-type"]).toContain(
+      "application/manifest+json",
+    );
+    const manifestJson = (await manifestRes.json()) as {
+      id: string;
+      start_url: string;
+      scope: string;
+      display: string;
+      icons: Array<{ sizes: string; type: string }>;
+    };
+    expect(manifestJson.id).toBe(`/h/${HOUSEHOLD_TOKEN}`);
+    expect(manifestJson.start_url).toBe(`/h/${HOUSEHOLD_TOKEN}?who=ate`);
+    expect(manifestJson.scope).toBe("/");
+    expect(manifestJson.display).toBe("standalone");
+    expect(
+      manifestJson.icons.some(
+        (i) => i.sizes === "192x192" && i.type === "image/png",
+      ),
+    ).toBe(true);
+    expect(
+      manifestJson.icons.some(
+        (i) => i.sizes === "512x512" && i.type === "image/png",
+      ),
+    ).toBe(true);
+
+    // Switching person on /setup updates the linked manifest href for direct install
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}/setup`);
+    await page.getByTestId("setup-member-jed").click();
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+      "href",
+      `/h/${HOUSEHOLD_TOKEN}/manifest?who=jed`,
+    );
+
+    trap.assertClean();
+  });
 });

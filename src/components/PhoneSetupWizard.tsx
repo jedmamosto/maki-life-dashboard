@@ -17,6 +17,7 @@ import type {
   PushPlatform,
 } from "@/lib/types";
 import { UI_COPY } from "@/lib/copy";
+import { buildHouseholdManifestUrl } from "@/lib/pwa-manifest";
 import { AppHeader } from "./AppHeader";
 import { CaregiverBadge } from "./CaregiverBadge";
 import {
@@ -123,6 +124,18 @@ export function PhoneSetupWizard({
         });
     }
   }, [token, initialWhoSlug, initialSnapshot.caregivers]);
+
+  useEffect(() => {
+    const manifestLink = document.querySelector<HTMLLinkElement>(
+      'link[rel="manifest"]'
+    );
+    if (manifestLink) {
+      manifestLink.href = buildHouseholdManifestUrl(
+        token,
+        selectedMember?.slug ?? null
+      );
+    }
+  }, [token, selectedMember?.slug]);
 
   const personalPath = selectedMember
     ? `/h/${encodeURIComponent(token)}?who=${encodeURIComponent(selectedMember.slug)}`

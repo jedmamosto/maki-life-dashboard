@@ -1,6 +1,8 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { connection } from "next/server";
 import { isOwnerPinCookieValid, verifyHouseholdToken } from "@/lib/auth";
+import { buildHouseholdManifestUrl } from "@/lib/pwa-manifest";
 import { getDashboardSnapshot } from "@/lib/dashboard-service";
 import { AccessGate } from "@/components/AccessGate";
 import { OwnerSettingsShell } from "@/components/OwnerSettingsShell";
@@ -9,6 +11,19 @@ import { getRequestBaseUrl } from "@/components/server-origin";
 
 interface SettingsPageProps {
   params: Promise<{ token: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: SettingsPageProps): Promise<Metadata> {
+  const { token } = await params;
+  const isValid = await verifyHouseholdToken(token);
+  if (!isValid) {
+    return {};
+  }
+  return {
+    manifest: buildHouseholdManifestUrl(token),
+  };
 }
 
 export default function SettingsPage({ params }: SettingsPageProps) {
