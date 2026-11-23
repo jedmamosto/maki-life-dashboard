@@ -220,12 +220,15 @@ test.describe("Auth, HttpOnly Cookie Isolation, Caregiver Identity, and PIN Gate
     const badManifestRes = await request.get("/h/bad-token/manifest");
     expect(badManifestRes.status()).toBe(404);
 
-    // Valid personal link emits a single manifest pointing to /h/<token>/manifest?who=ate
+    // Valid personal link emits a single manifest inside <head> pointing to /h/<token>/manifest?who=ate
     await page.goto(`/h/${HOUSEHOLD_TOKEN}?who=ate`);
-    const manifestLinks = page.locator('link[rel="manifest"]');
+    const manifestLinks = page.locator('head link[rel="manifest"]');
     await expect(manifestLinks).toHaveCount(1);
     const manifestHref = await manifestLinks.getAttribute("href");
     expect(manifestHref).toBe(`/h/${HOUSEHOLD_TOKEN}/manifest?who=ate`);
+    await expect(
+      page.locator('head meta[name="apple-mobile-web-app-capable"]'),
+    ).toHaveAttribute("content", "yes");
 
     // Fetch manifest without cookies (mirrors Android Chrome / iOS Safari manifest fetch)
     const manifestRes = await request.get(manifestHref!, {
@@ -257,13 +260,106 @@ test.describe("Auth, HttpOnly Cookie Isolation, Caregiver Identity, and PIN Gate
       ),
     ).toBe(true);
 
-    // Switching person on /setup updates the linked manifest href for direct install
-    await page.goto(`/h/${HOUSEHOLD_TOKEN}/setup`);
+    // Switching person on /setup (as family/owner) updates the linked manifest href for direct install
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}/setup?who=mom`);
     await page.getByTestId("setup-member-jed").click();
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
       "href",
       `/h/${HOUSEHOLD_TOKEN}/manifest?who=jed`,
     );
+
+    trap.assertClean();
+  });
+
+  test("appropriates header links and guards restricted routes by caregiver role", async ({
+    page,
+  }) => {
+    const trap = attachTelemetryTrap(page);
+
+    // 1. Helper (?who=ate): Care Board only — Owner, Phone Setup, and Settings links are hidden
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}?who=ate`);
+    await waitForHouseholdCookie(page);
+    await expect(
+      page.getByRole("navigation", { name: "Household Views" }),
+    ).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Owner" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Phone Setup" })).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Owner Settings" }),
+    ).toHaveCount(0);
+
+    // Direct navigation to /owner, /setup, or /settings as helper redirects back to Care Board
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}/owner`);
+    await expect(page).toHaveURL(new RegExp(`/h/${HOUSEHOLD_TOKEN}\\?who=ate$`));
+    await expect(
+      page.getByRole("heading", { name: "Owner View" }),
+    ).toHaveCount(0);
+
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}/setup`);
+    await expect(page).toHaveURL(new RegExp(`/h/${HOUSEHOLD_TOKEN}\\?who=ate$`));
+
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}/settings?who=ate`);
+    await expect(page).toHaveURL(new RegExp(`/h/${HOUSEHOLD_TOKEN}\\?who=ate$`));
+
+    // 2. Family (?who=mom): Care Board + Phone Setup only — Owner and Settings are hidden
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}?who=mom`);
+    const familyNav = page.getByRole("navigation", { name: "Household Views" });
+    await expect(familyNav).toBeVisible();
+    await expect(
+      familyNav.getByRole("link", { name: "Care Board" }),
+    ).toBeVisible();
+    await expect(
+      familyNav.getByRole("link", { name: "Phone Setup" }),
+    ).toBeVisible();
+    await expect(familyNav.getByRole("link", { name: "Owner" })).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Owner Settings" }),
+    ).toHaveCount(0);
+
+    // Family can open Phone Setup, but is redirected from /owner and /settings?who=mom
+    await familyNav.getByRole("link", { name: "Phone Setup" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Set Up This Phone in 2 Minutes" }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Owner" })).toHaveCount(0);
+
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}/owner`);
+    await expect(page).toHaveURL(new RegExp(`/h/${HOUSEHOLD_TOKEN}\\?who=mom$`));
+
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}/settings?who=mom`);
+    await expect(page).toHaveURL(new RegExp(`/h/${HOUSEHOLD_TOKEN}\\?who=mom$`));
+
+    // 3. Owner (?who=jed): Full access across Care Board, Owner, Phone Setup, and Settings
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}?who=jed`);
+    const ownerNav = page.getByRole("navigation", { name: "Household Views" });
+    await expect(
+      ownerNav.getByRole("link", { name: "Care Board" }),
+    ).toBeVisible();
+    await expect(ownerNav.getByRole("link", { name: "Owner" })).toBeVisible();
+    await expect(
+      ownerNav.getByRole("link", { name: "Phone Setup" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Owner Settings" }),
+    ).toBeVisible();
+
+    await ownerNav.getByRole("link", { name: "Owner" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Owner View" }),
+    ).toBeVisible();
+
+    // Selecting a helper in Phone Setup keeps Jed's owner navigation links intact
+    await page.getByRole("link", { name: "Open Phone Setup" }).click();
+    await expect(
+      page.getByRole("heading", { name: "Set Up This Phone in 2 Minutes" }),
+    ).toBeVisible();
+    await page.getByTestId("setup-member-ate").click();
+    await expect(
+      page.getByRole("navigation", { name: "Household Views" }).getByRole("link", { name: "Owner" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Owner Settings" }),
+    ).toBeVisible();
 
     trap.assertClean();
   });
