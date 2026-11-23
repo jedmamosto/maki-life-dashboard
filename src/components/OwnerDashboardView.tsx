@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bell,
@@ -27,20 +28,27 @@ import type {
   PushPlatform,
 } from "@/lib/types";
 import { UI_COPY, buildMessengerNudgeText } from "@/lib/copy";
+import { buildCareBoardPath, canAccessNavTab } from "@/lib/role-access";
 import { AppHeader } from "./AppHeader";
 import { CaregiverBadge } from "./CaregiverBadge";
+import { OwnerLoadingSkeleton } from "./ViewSkeletons";
 import {
   CareApiError,
   apiFetch,
   copyTextSafely,
   ensureHouseholdSession,
+  findValidCaregiver,
   useClientOrigin,
+  useIsHydrated,
+  useStoredCaregiverSlug,
+  writeStoredCaregiverSlug,
 } from "./care-client";
 
 interface OwnerDashboardViewProps {
   token: string;
   initialSnapshot: DashboardSnapshot;
   initialHistory: OwnerHistoryResponse;
+  initialWhoSlug?: string | null;
 }
 
 const ESCALATION_STEPS: Array<{
@@ -158,8 +166,12 @@ export function OwnerDashboardView({
   token,
   initialSnapshot,
   initialHistory,
+  initialWhoSlug,
 }: OwnerDashboardViewProps) {
+  const router = useRouter();
   const origin = useClientOrigin();
+  const isHydrated = useIsHydrated();
+  const storedSlug = useStoredCaregiverSlug(token);
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(initialSnapshot);
   const [history, setHistory] = useState<OwnerHistoryResponse>(initialHistory);
   const [tickOffsetMs, setTickOffsetMs] = useState(0);
@@ -185,11 +197,41 @@ export function OwnerDashboardView({
 
   const fallbackTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  const viewerCaregiver =
+    findValidCaregiver(snapshot.caregivers, initialWhoSlug) ??
+    findValidCaregiver(snapshot.caregivers, storedSlug);
+  const isRestricted =
+    isHydrated &&
+    viewerCaregiver !== null &&
+    !canAccessNavTab(viewerCaregiver.role, "owner");
+
   useEffect(() => {
+    if (isRestricted && viewerCaregiver) {
+      router.replace(buildCareBoardPath(token, viewerCaregiver.slug));
+      return;
+    }
+
+    if (initialWhoSlug) {
+      const fromQuery = findValidCaregiver(
+        initialSnapshot.caregivers,
+        initialWhoSlug
+      );
+      if (fromQuery && canAccessNavTab(fromQuery.role, "owner")) {
+        writeStoredCaregiverSlug(token, fromQuery.slug);
+      }
+    }
+
     void ensureHouseholdSession(token).catch(() => {
       // Surface if follow-up action fails
     });
-  }, [token]);
+  }, [
+    token,
+    initialWhoSlug,
+    initialSnapshot.caregivers,
+    isRestricted,
+    viewerCaregiver,
+    router,
+  ]);
 
   useEffect(() => {
     const parsed = Date.parse(snapshot.manilaNowIso);
@@ -339,6 +381,10 @@ export function OwnerDashboardView({
     }
   })();
 
+  if (isRestricted) {
+    return <OwnerLoadingSkeleton />;
+  }
+
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)] pb-12">
       <AppHeader
@@ -346,6 +392,7 @@ export function OwnerDashboardView({
         activeTab="owner"
         manilaDateLabel={manilaClock.dateLabel}
         manilaTimeLabel={manilaClock.timeLabel}
+        activeCaregiver={viewerCaregiver}
         maxWidthClass="max-w-4xl"
       />
 
@@ -844,7 +891,7 @@ export function OwnerDashboardView({
               </p>
             </div>
             <Link
-              href={`/h/${encodeURIComponent(token)}/setup`}
+              href={`/h/${encodeURIComponent(token)}/setup${viewerCaregiver ? `?who=${encodeURIComponent(viewerCaregiver.slug)}` : ""}`}
               className="inline-flex min-h-[44px] items-center gap-2 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-subtle)] px-3.5 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
             >
               <Smartphone className="h-4 w-4" aria-hidden="true" />

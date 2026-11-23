@@ -77,14 +77,14 @@ test.describe("CEFR A2 Copy, Zero Unicode Emojis, and Button/Input Accessibility
     await page.unroute("**/api/meals/feed");
 
     // 4. Owner View
-    await page.goto(`/h/${HOUSEHOLD_TOKEN}/owner`);
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}/owner?who=jed`);
     await expect(
       page.getByRole("heading", { name: "Owner View" }),
     ).toBeVisible();
     await assertCleanCopyAndA11y(page, "Owner View");
 
     // 5. Setup View (both iOS and Android guides)
-    await page.goto(`/h/${HOUSEHOLD_TOKEN}/setup?who=ate`);
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}/setup?who=jed`);
     await expect(
       page.getByRole("heading", { name: "Set Up This Phone in 2 Minutes" }),
     ).toBeVisible();

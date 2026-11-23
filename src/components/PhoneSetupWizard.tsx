@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   AlertCircle,
@@ -18,8 +19,10 @@ import type {
 } from "@/lib/types";
 import { UI_COPY } from "@/lib/copy";
 import { buildHouseholdManifestUrl } from "@/lib/pwa-manifest";
+import { buildCareBoardPath, canAccessNavTab } from "@/lib/role-access";
 import { AppHeader } from "./AppHeader";
 import { CaregiverBadge } from "./CaregiverBadge";
+import { SimplePageSkeleton } from "./ViewSkeletons";
 import {
   CareApiError,
   apiFetch,
@@ -30,6 +33,7 @@ import {
   isStandaloneDisplayMode,
   urlBase64ToUint8Array,
   useClientOrigin,
+  useIsHydrated,
   useStoredCaregiverSlug,
   writeStoredCaregiverSlug,
 } from "./care-client";
@@ -49,8 +53,10 @@ export function PhoneSetupWizard({
   initialWhoSlug,
   vapidPublicKey,
 }: PhoneSetupWizardProps) {
+  const router = useRouter();
   const activeCaregivers = initialSnapshot.caregivers.filter((c) => c.isActive);
   const origin = useClientOrigin();
+  const isHydrated = useIsHydrated();
   const storedSlug = useStoredCaregiverSlug(token);
 
   const detectedPlatform = useSyncExternalStore<PushPlatform>(
@@ -87,6 +93,14 @@ export function PhoneSetupWizard({
   const [pushError, setPushError] = useState<string | null>(null);
   const [testSuccess, setTestSuccess] = useState<string | null>(null);
 
+  const viewerCaregiver =
+    findValidCaregiver(activeCaregivers, initialWhoSlug) ??
+    findValidCaregiver(activeCaregivers, storedSlug);
+  const isRestricted =
+    isHydrated &&
+    viewerCaregiver !== null &&
+    !canAccessNavTab(viewerCaregiver.role, "setup");
+
   const selectedMember: Caregiver | undefined =
     findValidCaregiver(activeCaregivers, pickedCaregiverId) ??
     findValidCaregiver(activeCaregivers, initialWhoSlug) ??
@@ -95,6 +109,11 @@ export function PhoneSetupWizard({
     activeCaregivers[0];
 
   useEffect(() => {
+    if (isRestricted && viewerCaregiver) {
+      router.replace(buildCareBoardPath(token, viewerCaregiver.slug));
+      return;
+    }
+
     void ensureHouseholdSession(token).catch(() => {
       // Handled when API request runs
     });
@@ -104,7 +123,7 @@ export function PhoneSetupWizard({
         initialSnapshot.caregivers,
         initialWhoSlug
       );
-      if (fromQuery) {
+      if (fromQuery && canAccessNavTab(fromQuery.role, "setup")) {
         writeStoredCaregiverSlug(token, fromQuery.slug);
       }
     }
@@ -123,7 +142,14 @@ export function PhoneSetupWizard({
           // Ignore serviceWorker query error on unsupported browsers
         });
     }
-  }, [token, initialWhoSlug, initialSnapshot.caregivers]);
+  }, [
+    token,
+    initialWhoSlug,
+    initialSnapshot.caregivers,
+    isRestricted,
+    viewerCaregiver,
+    router,
+  ]);
 
   useEffect(() => {
     const manifestLink = document.querySelector<HTMLLinkElement>(
@@ -144,7 +170,6 @@ export function PhoneSetupWizard({
 
   const handleSelectPerson = (person: Caregiver) => {
     setPickedCaregiverId(person.id);
-    writeStoredCaregiverSlug(token, person.slug);
     setLinkCopied(false);
     setTestSuccess(null);
   };
@@ -278,6 +303,10 @@ export function PhoneSetupWizard({
     }
   };
 
+  if (isRestricted) {
+    return <SimplePageSkeleton />;
+  }
+
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)] pb-12">
       <AppHeader
@@ -285,7 +314,7 @@ export function PhoneSetupWizard({
         activeTab="setup"
         manilaDateLabel={initialSnapshot.manilaDateLabel}
         manilaTimeLabel={initialSnapshot.manilaTimeLabel}
-        activeCaregiver={selectedMember ?? null}
+        activeCaregiver={viewerCaregiver}
         maxWidthClass="max-w-2xl"
       />
 

@@ -1,8 +1,14 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { verifyHouseholdToken } from "@/lib/auth";
 import { buildHouseholdManifestUrl } from "@/lib/pwa-manifest";
+import {
+  buildCareBoardPath,
+  canAccessNavTab,
+  findActiveCaregiverBySlug,
+} from "@/lib/role-access";
 import { getDashboardSnapshot } from "@/lib/dashboard-service";
 import { AccessGate } from "@/components/AccessGate";
 import { PhoneSetupWizard } from "@/components/PhoneSetupWizard";
@@ -50,6 +56,10 @@ async function SetupLoader({ params, searchParams }: SetupPageProps) {
   const whoSlug = typeof rawWho === "string" ? rawWho : null;
   const baseUrl = await getRequestBaseUrl();
   const snapshot = await getDashboardSnapshot(undefined, baseUrl);
+  const whoCaregiver = findActiveCaregiverBySlug(snapshot.caregivers, whoSlug);
+  if (whoCaregiver && !canAccessNavTab(whoCaregiver.role, "setup")) {
+    redirect(buildCareBoardPath(token, whoCaregiver.slug));
+  }
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
   return (

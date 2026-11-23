@@ -96,7 +96,7 @@ test.describe("5-State Resilience Matrix and Viewport Geometry Audit", () => {
     await expect(playCard.getByText("Goal Done (3 of 3)")).toBeVisible();
 
     // 5. LOADING STATE: Delayed GET /api/dashboard on Owner View Refresh & Settings unlock
-    await page.goto(`/h/${HOUSEHOLD_TOKEN}/owner`);
+    await page.goto(`/h/${HOUSEHOLD_TOKEN}/owner?who=jed`);
     await expect(
       page.getByText("No care actions logged today yet."),
     ).toHaveCount(0);
@@ -157,14 +157,14 @@ test.describe("5-State Resilience Matrix and Viewport Geometry Audit", () => {
         ]);
 
         // Owner View
-        await page.goto(`/h/${HOUSEHOLD_TOKEN}/owner`);
+        await page.goto(`/h/${HOUSEHOLD_TOKEN}/owner?who=jed`);
         await assertNoHorizontalOverflow(page);
         await assertTouchTargets(page, [
           page.getByRole("button", { name: "Copy Messenger Nudge" }),
         ]);
 
         // Setup View
-        await page.goto(`/h/${HOUSEHOLD_TOKEN}/setup?who=ate`);
+        await page.goto(`/h/${HOUSEHOLD_TOKEN}/setup?who=jed`);
         await assertNoHorizontalOverflow(page);
         await assertTouchTargets(page, [
           page.getByRole("button", { name: "Copy Personal Link" }),

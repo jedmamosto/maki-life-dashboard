@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { Cat, ChevronDown, Settings } from "lucide-react";
-import type { Caregiver } from "@/lib/types";
+import { canAccessNavTab, type AppNavTab } from "@/lib/role-access";
+import type { Caregiver, CaregiverRole } from "@/lib/types";
 import { UI_COPY } from "@/lib/copy";
 import { CaregiverBadge } from "./CaregiverBadge";
 
-export type ActiveNavTab = "board" | "owner" | "setup" | "settings";
+export type ActiveNavTab = AppNavTab;
 
 interface AppHeaderProps {
   token: string;
@@ -32,19 +33,28 @@ export function AppHeader({
     ? `?who=${encodeURIComponent(activeCaregiver.slug)}`
     : "";
 
-  const navItems: Array<{
-    key: ActiveNavTab;
+  const effectiveRole: CaregiverRole | null =
+    activeCaregiver?.role ?? (activeTab !== "board" ? "owner" : null);
+
+  const allNavItems: Array<{
+    key: Exclude<ActiveNavTab, "settings">;
     label: string;
     href: string;
   }> = [
     { key: "board", label: UI_COPY.brandBoardNav, href: `${basePath}${whoQuery}` },
-    { key: "owner", label: UI_COPY.brandOwnerNav, href: `${basePath}/owner` },
+    { key: "owner", label: UI_COPY.brandOwnerNav, href: `${basePath}/owner${whoQuery}` },
     {
       key: "setup",
       label: UI_COPY.brandSetupNav,
       href: `${basePath}/setup${whoQuery}`,
     },
   ];
+
+  const navItems = allNavItems.filter((item) =>
+    canAccessNavTab(effectiveRole, item.key)
+  );
+  const canAccessSettings = canAccessNavTab(effectiveRole, "settings");
+  const navGridColsClass = navItems.length === 2 ? "grid-cols-2" : "grid-cols-3";
 
   return (
     <header className="sticky top-0 z-30 border-b border-[var(--border-hairline)] bg-[var(--bg-canvas)]/95 backdrop-blur-sm safe-top">
@@ -106,40 +116,47 @@ export function AppHeader({
               </button>
             ) : null}
 
-            <Link
-              href={`${basePath}/settings`}
-              aria-label={UI_COPY.ownerSettings.settingsTitle}
-              aria-current={activeTab === "settings" ? "page" : undefined}
-              className={`inline-flex h-11 w-11 items-center justify-center rounded-[12px] border kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
-                activeTab === "settings"
-                  ? "border-[var(--indigo-border)] bg-[var(--indigo-bg)] text-[var(--indigo-text)]"
-                  : "border-[var(--border-hairline)] bg-[var(--bg-card)] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
-              }`}
-            >
-              <Settings className="h-5 w-5" aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-
-        <nav aria-label="Household Views" className="mt-2.5 grid grid-cols-3 gap-2">
-          {navItems.map((item) => {
-            const isActive = activeTab === item.key;
-            return (
+            {canAccessSettings ? (
               <Link
-                key={item.key}
-                href={item.href}
-                aria-current={isActive ? "page" : undefined}
-                className={`inline-flex min-h-[44px] items-center justify-center rounded-[12px] border px-2 text-center text-xs sm:text-sm font-semibold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
-                  isActive
-                    ? "border-[var(--sage-border)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
+                href={`${basePath}/settings${whoQuery}`}
+                aria-label={UI_COPY.ownerSettings.settingsTitle}
+                aria-current={activeTab === "settings" ? "page" : undefined}
+                className={`inline-flex h-11 w-11 items-center justify-center rounded-[12px] border kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                  activeTab === "settings"
+                    ? "border-[var(--indigo-border)] bg-[var(--indigo-bg)] text-[var(--indigo-text)]"
                     : "border-[var(--border-hairline)] bg-[var(--bg-card)] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
                 }`}
               >
-                <span className="truncate">{item.label}</span>
+                <Settings className="h-5 w-5" aria-hidden="true" />
               </Link>
-            );
-          })}
-        </nav>
+            ) : null}
+          </div>
+        </div>
+
+        {navItems.length > 1 ? (
+          <nav
+            aria-label="Household Views"
+            className={`mt-2.5 grid ${navGridColsClass} gap-2`}
+          >
+            {navItems.map((item) => {
+              const isActive = activeTab === item.key;
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`inline-flex min-h-[44px] items-center justify-center rounded-[12px] border px-2 text-center text-xs sm:text-sm font-semibold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                    isActive
+                      ? "border-[var(--sage-border)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
+                      : "border-[var(--border-hairline)] bg-[var(--bg-card)] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
+                  }`}
+                >
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        ) : null}
       </div>
     </header>
   );

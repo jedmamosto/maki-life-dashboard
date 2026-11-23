@@ -69,6 +69,47 @@ function buildUniqueSlug(name: string, existing: Caregiver[]): string {
   return `${base}-${suffix}`;
 }
 
+interface BadgeColorPickerProps {
+  value: AvatarColorKey;
+  onChange: (color: AvatarColorKey) => void;
+}
+
+function BadgeColorPicker({ value, onChange }: BadgeColorPickerProps) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <span className="text-xs font-semibold text-[var(--ink-secondary)] mr-1">
+        {UI_COPY.ownerSettings.colorLabel}:
+      </span>
+      {AVATAR_COLOR_KEYS.map((colorKey) => {
+        const selected = value === colorKey;
+        return (
+          <button
+            key={colorKey}
+            type="button"
+            aria-pressed={selected}
+            aria-label={`${UI_COPY.ownerSettings.colorLabel}: ${UI_COPY.ownerSettings.colorNames[colorKey]}`}
+            onClick={() => onChange(colorKey)}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+          >
+            <span
+              style={{ backgroundColor: AVATAR_COLOR_MAP[colorKey] }}
+              className={`flex h-8 w-8 items-center justify-center rounded-full text-white kitchen-transition ${
+                selected
+                  ? "ring-2 ring-[var(--ink-primary)] ring-offset-2"
+                  : "opacity-85 hover:opacity-100"
+              }`}
+            >
+              {selected ? (
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+              ) : null}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 interface OwnerSettingsPanelProps {
   token: string;
   initialSnapshot: DashboardSnapshot;
@@ -735,35 +776,16 @@ export function OwnerSettingsPanel({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--ink-secondary)] mr-1">
-                    {UI_COPY.ownerSettings.colorLabel}:
-                  </span>
-                  {AVATAR_COLOR_KEYS.map((colorKey) => {
-                    const selected = person.avatarColor === colorKey;
-                    return (
-                      <button
-                        key={colorKey}
-                        type="button"
-                        aria-pressed={selected}
-                        aria-label={`${UI_COPY.ownerSettings.colorLabel}: ${UI_COPY.ownerSettings.colorNames[colorKey]}`}
-                        onClick={() => {
-                          setCaregivers((prev) =>
-                            prev.map((item, i) =>
-                              i === index ? { ...item, avatarColor: colorKey } : item
-                            )
-                          );
-                        }}
-                        style={{ backgroundColor: AVATAR_COLOR_MAP[colorKey] }}
-                        className={`h-8 w-8 rounded-full flex items-center justify-center text-white kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] focus-visible:ring-offset-2 ${
-                          selected ? "ring-2 ring-[var(--ink-primary)] ring-offset-2" : "opacity-85 hover:opacity-100"
-                        }`}
-                      >
-                        {selected ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
-                      </button>
+                <BadgeColorPicker
+                  value={person.avatarColor}
+                  onChange={(colorKey) => {
+                    setCaregivers((prev) =>
+                      prev.map((item, i) =>
+                        i === index ? { ...item, avatarColor: colorKey } : item
+                      )
                     );
-                  })}
-                </div>
+                  }}
+                />
               </div>
             );
           })}
@@ -880,29 +902,10 @@ export function OwnerSettingsPanel({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-[var(--ink-secondary)] mr-1">
-                {UI_COPY.ownerSettings.colorLabel}:
-              </span>
-              {AVATAR_COLOR_KEYS.map((colorKey) => {
-                const selected = newPersonColor === colorKey;
-                return (
-                  <button
-                    key={colorKey}
-                    type="button"
-                    aria-pressed={selected}
-                    aria-label={`${UI_COPY.ownerSettings.colorLabel}: ${UI_COPY.ownerSettings.colorNames[colorKey]}`}
-                    onClick={() => setNewPersonColor(colorKey)}
-                    style={{ backgroundColor: AVATAR_COLOR_MAP[colorKey] }}
-                    className={`h-8 w-8 rounded-full flex items-center justify-center text-white kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] focus-visible:ring-offset-2 ${
-                      selected ? "ring-2 ring-[var(--ink-primary)] ring-offset-2" : "opacity-85 hover:opacity-100"
-                    }`}
-                  >
-                    {selected ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
-                  </button>
-                );
-              })}
-            </div>
+            <BadgeColorPicker
+              value={newPersonColor}
+              onChange={setNewPersonColor}
+            />
 
             <button
               type="submit"

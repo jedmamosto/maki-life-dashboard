@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { findActiveCaregiverBySlug } from "@/lib/role-access";
 import type {
   AvatarColorKey,
   Caregiver,
@@ -204,17 +205,7 @@ export function findValidCaregiver(
   caregivers: Caregiver[],
   slugOrId: string | null | undefined
 ): Caregiver | null {
-  if (!slugOrId) {
-    return null;
-  }
-  const normalized = slugOrId.trim().toLowerCase();
-  return (
-    caregivers.find(
-      (c) =>
-        c.isActive &&
-        (c.slug.toLowerCase() === normalized || c.id.toLowerCase() === normalized)
-    ) ?? null
-  );
+  return findActiveCaregiverBySlug(caregivers, slugOrId);
 }
 
 export function generateIdempotencyKey(prefix: string): string {

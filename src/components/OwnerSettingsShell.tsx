@@ -2,24 +2,37 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import type { DashboardSnapshot } from "@/lib/types";
+import { canAccessNavTab } from "@/lib/role-access";
+import type { Caregiver, DashboardSnapshot } from "@/lib/types";
 import { UI_COPY } from "@/lib/copy";
 import { AppHeader } from "./AppHeader";
 import { OwnerPinGate } from "./OwnerPinGate";
 import { OwnerSettingsPanel } from "./OwnerSettingsPanel";
-import { CareApiError, apiFetch, ensureHouseholdSession } from "./care-client";
+import {
+  CareApiError,
+  apiFetch,
+  ensureHouseholdSession,
+  findValidCaregiver,
+  useStoredCaregiverSlug,
+  writeStoredCaregiverSlug,
+} from "./care-client";
 
 interface OwnerSettingsShellProps {
   token: string;
   initialUnlocked: boolean;
   initialSnapshot: DashboardSnapshot | null;
+  initialWhoSlug?: string | null;
+  initialOwnerCaregiver?: Caregiver | null;
 }
 
 export function OwnerSettingsShell({
   token,
   initialUnlocked,
   initialSnapshot,
+  initialWhoSlug,
+  initialOwnerCaregiver = null,
 }: OwnerSettingsShellProps) {
+  const storedSlug = useStoredCaregiverSlug(token);
   const [unlocked, setUnlocked] = useState(initialUnlocked);
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(
     initialSnapshot
@@ -27,11 +40,27 @@ export function OwnerSettingsShell({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
 
+  const resolvedFromSnapshot = snapshot
+    ? findValidCaregiver(snapshot.caregivers, initialWhoSlug) ??
+      findValidCaregiver(snapshot.caregivers, storedSlug)
+    : null;
+  const activeOwnerCaregiver =
+    resolvedFromSnapshot && canAccessNavTab(resolvedFromSnapshot.role, "settings")
+      ? resolvedFromSnapshot
+      : initialOwnerCaregiver;
+
   useEffect(() => {
+    if (
+      initialOwnerCaregiver &&
+      canAccessNavTab(initialOwnerCaregiver.role, "settings")
+    ) {
+      writeStoredCaregiverSlug(token, initialOwnerCaregiver.slug);
+    }
+
     void ensureHouseholdSession(token).catch(() => {
       // Handled by PIN gate or settings fetch
     });
-  }, [token]);
+  }, [token, initialOwnerCaregiver]);
 
   const loadSnapshot = useCallback(async () => {
     setLoadingSnapshot(true);
@@ -65,6 +94,7 @@ export function OwnerSettingsShell({
         activeTab="settings"
         manilaDateLabel={snapshot?.manilaDateLabel}
         manilaTimeLabel={snapshot?.manilaTimeLabel}
+        activeCaregiver={activeOwnerCaregiver}
         maxWidthClass="max-w-2xl"
       />
 
