@@ -15,7 +15,7 @@ import { parseJsonBody, problemResponse, requireHouseholdAuth } from "@/app/api/
 const UndoMealSchema = z
   .object({
     slotKey: z.string().min(1).optional(),
-    period: z.enum(["AM", "PM"]).optional(),
+    period: z.enum(["AM", "MID", "PM"]).optional(),
     serviceDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)

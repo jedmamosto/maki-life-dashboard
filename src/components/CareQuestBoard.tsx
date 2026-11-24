@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
@@ -311,10 +312,12 @@ export function CareQuestBoard({
           });
 
           setSnapshot(result.snapshot);
-          const updatedSlot =
-            slot.period === "AM"
-              ? result.snapshot.meals.am
-              : result.snapshot.meals.pm;
+          const slotMap = {
+            AM: result.snapshot.meals.am,
+            MID: result.snapshot.meals.mid,
+            PM: result.snapshot.meals.pm,
+          };
+          const updatedSlot = slotMap[slot.period];
 
           if (result.alreadyFed) {
             setAlreadyFedNotice({
@@ -569,7 +572,7 @@ export function CareQuestBoard({
           badge: "bg-white border-[var(--sage-border)] text-[var(--sage-strong)]",
           title: "text-[var(--sage-strong)]",
           sub: "text-[var(--ink-primary)]",
-          icon: <ShieldCheck className="h-6 w-6 text-[var(--sage-text)]" aria-hidden="true" />,
+          icon: <ShieldCheck className="h-3.5 w-3.5 text-[var(--sage-text)]" aria-hidden="true" />,
         };
       case "ATTENTION":
         return {
@@ -577,7 +580,7 @@ export function CareQuestBoard({
           badge: "bg-white border-[var(--amber-border)] text-[var(--amber-strong)]",
           title: "text-[var(--amber-strong)]",
           sub: "text-[var(--ink-primary)]",
-          icon: <Clock className="h-6 w-6 text-[var(--amber-accent)]" aria-hidden="true" />,
+          icon: <Clock className="h-3.5 w-3.5 text-[var(--amber-accent)]" aria-hidden="true" />,
         };
       case "OVERDUE":
       default:
@@ -586,7 +589,7 @@ export function CareQuestBoard({
           badge: "bg-white border-[var(--coral-border)] text-[var(--coral-strong)]",
           title: "text-[var(--coral-strong)]",
           sub: "text-[var(--ink-primary)]",
-          icon: <AlertCircle className="h-6 w-6 text-[var(--coral-accent)]" aria-hidden="true" />,
+          icon: <AlertCircle className="h-3.5 w-3.5 text-[var(--coral-accent)]" aria-hidden="true" />,
         };
     }
   })();
@@ -607,7 +610,7 @@ export function CareQuestBoard({
         }
         aria-expanded={isExpanded}
         data-testid={`supply-card-${supply.key.toLowerCase()}`}
-        className={`flex min-h-[104px] flex-col justify-between rounded-[16px] border p-3.5 text-left kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+        className={`flex min-h-[104px] flex-col justify-between rounded-[16px] border p-3.5 text-left kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
           isExpanded
             ? "border-[var(--border-control)] bg-[var(--bg-subtle)]"
             : "border-[var(--border-hairline)] bg-[var(--bg-card)] hover:border-[var(--border-control)]"
@@ -731,8 +734,8 @@ export function CareQuestBoard({
                   : slot.state === "OVERDUE"
                     ? "bg-[var(--coral-text)] text-white hover:bg-[var(--coral-strong)] focus-visible:ring-[var(--coral-text)]"
                     : slot.state === "UPCOMING"
-                      ? "border border-[var(--border-control)] bg-[var(--bg-subtle)] text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:ring-[var(--sage-text)]"
-                      : "bg-[var(--sage-text)] text-white hover:bg-[var(--sage-strong)] focus-visible:ring-[var(--sage-text)]"
+                      ? "border border-[var(--border-control)] bg-[var(--bg-subtle)] text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:ring-[var(--ring-focus)]"
+                      : "bg-[var(--brand-primary)] text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] focus-visible:ring-[var(--ring-focus)]"
               } disabled:opacity-65`}
             >
               {isMealInFlight ? (
@@ -786,7 +789,7 @@ export function CareQuestBoard({
                   onClick={() => void handleUndoMeal(slot.slotKey)}
                   disabled={Boolean(inFlightAction)}
                   data-testid={`undo-meal-${slot.period.toLowerCase()}`}
-                  className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-card)] px-3 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] disabled:opacity-60"
+                  className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-card)] px-3 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] disabled:opacity-60"
                 >
                   {isUndoInFlight ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -806,7 +809,7 @@ export function CareQuestBoard({
                 }
                 aria-expanded={showAttrList}
                 data-testid={`change-name-${slot.period.toLowerCase()}`}
-                className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-card)] px-3 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-card)] px-3 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
               >
                 <span>{UI_COPY.meals.changeNameCta}</span>
               </button>
@@ -833,7 +836,7 @@ export function CareQuestBoard({
                               person.id
                             )
                           }
-                          className={`flex min-h-[44px] items-center gap-2 rounded-[10px] border px-2.5 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                          className={`flex min-h-[44px] items-center gap-2 rounded-[10px] border px-2.5 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                             isCurrent
                               ? "border-[var(--sage-text)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
                               : "border-[var(--border-hairline)] bg-[var(--bg-card)] text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
@@ -1015,12 +1018,23 @@ export function CareQuestBoard({
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <span
-                aria-hidden="true"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-white border border-[var(--border-hairline)]"
-              >
-                {survivabilityStyle.icon}
-              </span>
+              <div className="relative shrink-0">
+                <Image
+                  src="/maki/maki-portrait.jpg"
+                  width={128}
+                  height={128}
+                  sizes="(min-width: 640px) 64px, 56px"
+                  preload={true}
+                  className="h-14 w-14 sm:h-16 sm:w-16 rounded-[16px] object-cover object-[50%_32%]"
+                  alt="Maki the orange tabby cat looking up"
+                />
+                <span
+                  aria-hidden="true"
+                  className="absolute -bottom-1 -right-1 flex h-[22px] w-[22px] items-center justify-center rounded-full border border-[var(--border-hairline)] bg-white shadow-sm"
+                >
+                  {survivabilityStyle.icon}
+                </span>
+              </div>
               <div className="min-w-0">
                 <h1
                   className={`font-display text-2xl font-extrabold tracking-[-0.02em] leading-tight ${survivabilityStyle.title}`}
@@ -1041,11 +1055,34 @@ export function CareQuestBoard({
               {UI_COPY.survivability.coreLabelSuffix}
             </span>
           </div>
+
+          {snapshot.survivability.status === "SAFE" &&
+          snapshot.meals.am.state === "DONE" &&
+          snapshot.meals.mid.state === "DONE" &&
+          snapshot.meals.pm.state === "DONE" ? (
+            <div
+              data-testid="all-meals-done-strip"
+              className="mt-4 flex items-center gap-3 rounded-[12px] border border-[var(--sage-border)] bg-white/80 p-2.5"
+            >
+              <Image
+                src="/maki/maki-cozy.jpg"
+                width={96}
+                height={96}
+                sizes="48px"
+                className="h-12 w-12 rounded-[12px] object-cover object-center shrink-0"
+                alt="Maki curled up resting on a dark hoodie"
+              />
+              <p className="text-sm font-semibold text-[var(--sage-strong)]">
+                All 3 meals are done. Maki is resting easy tonight.
+              </p>
+            </div>
+          ) : null}
         </section>
 
         {/* CHUNK 2: Today's Essential Quests */}
         <section aria-label="Today's Essential Quests" className="space-y-3">
           {renderMealCard(snapshot.meals.am)}
+          {renderMealCard(snapshot.meals.mid)}
           {renderMealCard(snapshot.meals.pm)}
 
           <article
@@ -1106,8 +1143,8 @@ export function CareQuestBoard({
                   snapshot.litter.state === "OVERDUE"
                     ? "bg-[var(--coral-text)] text-white hover:bg-[var(--coral-strong)] focus-visible:ring-[var(--coral-text)]"
                     : snapshot.litter.state === "DUE_NOW"
-                      ? "bg-[var(--sage-text)] text-white hover:bg-[var(--sage-strong)] focus-visible:ring-[var(--sage-text)]"
-                      : "border border-[var(--border-control)] bg-[var(--bg-subtle)] text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:ring-[var(--sage-text)]"
+                      ? "bg-[var(--brand-primary)] text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] focus-visible:ring-[var(--ring-focus)]"
+                      : "border border-[var(--border-control)] bg-[var(--bg-subtle)] text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:ring-[var(--ring-focus)]"
                 } disabled:opacity-65`}
               >
                 {inFlightAction === "litter:clean" ? (
@@ -1182,7 +1219,7 @@ export function CareQuestBoard({
                   <button
                     type="button"
                     onClick={() => setExpandedSupplyKey(null)}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[10px] border border-[var(--border-hairline)] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[10px] border border-[var(--border-hairline)] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
                     aria-label={UI_COPY.avatarPicker.closeLabel}
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
@@ -1204,7 +1241,7 @@ export function CareQuestBoard({
                         onClick={() =>
                           void handleUpdateSupply(expandedSupplyKey, lvl)
                         }
-                        className={`min-h-[44px] rounded-[12px] border px-3 text-sm font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                        className={`min-h-[44px] rounded-[12px] border px-3 text-sm font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                           isSelected
                             ? "border-[var(--sage-text)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
                             : "border-[var(--border-control)] bg-[var(--bg-canvas)] text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"

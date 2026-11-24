@@ -23,6 +23,8 @@ export function runCareRepositoryContractSuite(
       const settings = await repo.getSettings();
       expect(settings.householdTimezone).toBe("Asia/Manila");
       expect(settings.amMealHour).toBe(10);
+      expect(settings.midMealHour).toBe(14);
+      expect(settings.midMealMinute).toBe(0);
       expect(settings.pmMealHour).toBe(19);
       expect(settings.litterIntervalHours).toBe(48);
       expect(settings.weeklyPlayGoal).toBe(3);

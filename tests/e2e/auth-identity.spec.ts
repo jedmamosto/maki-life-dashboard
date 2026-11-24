@@ -32,6 +32,7 @@ test.describe("Auth, HttpOnly Cookie Isolation, Caregiver Identity, and PIN Gate
       "Maki is Safe",
       "Maki Needs Care",
       "10:00 AM Meal",
+      "2:00 PM Meal",
       "7:00 PM Meal",
       "Litter Box",
       "Cat Food",

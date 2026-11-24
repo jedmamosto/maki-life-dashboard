@@ -8,7 +8,7 @@ This manual covers daily tasks, common household scenarios, and error recovery i
 
 1. Open your personal `?who=ate` link from your Home Screen icon.
 2. First visit: If `Who is helping Maki today?` appears, tap `Ate`. No password is needed.
-3. Log `10:00 AM Meal` and `7:00 PM Meal`: Feed Maki, then tap `Mark Fed` (or `Mark Fed Now` if late). You see `Saved: Maki fed at [time].` with a 10-second `Undo` bar.
+3. Log `10:00 AM Meal`, `2:00 PM Meal`, and `7:00 PM Meal`: Feed Maki first. Then tap `Mark Fed` (or `Mark Fed Now` if late). You see `Saved: Maki fed at [time].` with a 10-second `Undo` bar.
 4. Sunday 7:00 PM food check: After marking Sunday's `7:00 PM Meal` done, answer `Quick check: How much cat food is left?` (`Full`, `Half`, `Low`, or `Empty`).
 5. Clean `Litter Box` (every 48 hours / 2 days): Clean the box, then tap `Mark Litter Cleaned`. Every 3rd clean asks `Quick check: How much cat litter is left?`.
 6. Update `Supplies` anytime: Tap `Edit` on `Cat Food` or `Cat Litter`, then pick `Full`, `Half`, `Low`, or `Empty`. Marking `Low` or `Empty` sends a push alert to the owner.
@@ -17,7 +17,7 @@ This manual covers daily tasks, common household scenarios, and error recovery i
 
 1. Check before feeding: Look for `Fed by [Name] at [time]. Maki is all set.` so Maki does not get fed twice.
 2. Handle `T+45m` backup alerts: After 45 minutes late, Family and Owner phones get `Check Maki's [time] Meal`. Check Maki's bowl or ask `Ate` first, then tap `Mark Fed Now`.
-3. Log optional `Out-of-Room Play`: Take Maki out for 10 minutes, then tap `Log Play Time` (or `Log Extra Play` after 3 sessions). Play is an optional weekly goal and never lowers the `5 Core` Survivability status.
+3. Log optional `Out-of-Room Play`: Take Maki out for 10 minutes, then tap `Log Play Time` (or `Log Extra Play` after 3 sessions). Play is an optional weekly goal and never lowers the `6 Core` Survivability status.
 
 ### Remote Owner (Jed)
 
@@ -32,7 +32,7 @@ This manual covers daily tasks, common household scenarios, and error recovery i
 
 ### Feeding Early (Up to 90 Minutes Before Meal Time)
 
-- Within 90 minutes before `10:00 AM` (`8:30 AM`+) or `7:00 PM` (`5:30 PM`+), the meal button reads `Mark Fed Early`.
+- Within 90 minutes before `10:00 AM` (`8:30 AM`+), `2:00 PM` (`12:30 PM`+), or `7:00 PM` (`5:30 PM`+), the meal button reads `Mark Fed Early`.
 - Tap `Mark Fed Early` after feeding Maki. The server skips all reminder alerts for that meal automatically.
 
 ### Two People Tap `Mark Fed` at the Same Time
@@ -63,7 +63,7 @@ Your phone lost internet or could not reach the server. Check Wi-Fi or mobile da
 
 ### `Too early for the [time] meal.`
 
-You tapped outside the 90-minute early feeding window. Wait until `8:30 AM` for the `10:00 AM` meal or `5:30 PM` for the `7:00 PM` meal, then tap `Mark Fed Early`.
+You tapped outside the 90-minute early feeding window. Wait until `8:30 AM` (`10:00 AM` meal), `12:30 PM` (`2:00 PM` meal), or `5:30 PM` (`7:00 PM` meal). Then tap `Mark Fed Early`.
 
 ### `You can only undo meals from today.`
 
@@ -79,7 +79,7 @@ This happens when:
 
 Fix by device:
 - iPhone: Open the `?who=` link in Safari, tap `Share` -> `Add to Home Screen`, launch the Home Screen icon, then tap `Allow Phone Alerts` and `Send Test Ping` in `/h/[token]/setup`.
-- Android: Install the app from Chrome, allow notifications in Android settings, set Chrome Battery to `Unrestricted`, keep `10:00 AM` and `7:00 PM` Clock alarms active, and re-run `Allow Phone Alerts` and `Send Test Ping` in `/h/[token]/setup`.
+- Android: Install the app from Chrome, allow notifications in Android settings, and set Chrome Battery to `Unrestricted`. Keep `10:00 AM`, `2:00 PM`, and `7:00 PM` Clock alarms active, then re-run `Allow Phone Alerts` and `Send Test Ping` in `/h/[token]/setup`.
 
 ### `Copy blocked by browser. Copy the text above directly.`
 

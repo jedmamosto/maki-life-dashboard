@@ -69,8 +69,8 @@ Deploy the app, then open `https://<your-domain>/api/health` and confirm HTTP `2
 
 | Cron Expression | Purpose |
 | :--- | :--- |
-| `CRON_TZ=Asia/Manila 0,20,45 10,19 * * *` | Runs 10:00 AM and 7:00 PM meal due (`T+0m`), `+20m`, and `+45m` checks. |
-| `CRON_TZ=Asia/Manila 0 12,21 * * *` | Runs `T+120m` urgent owner push and Resend email escalations. |
+| `CRON_TZ=Asia/Manila 0,20,45 10,14,19 * * *` | Runs 10:00 AM, 2:00 PM, and 7:00 PM meal due (`T+0m`), `+20m`, and `+45m` checks. |
+| `CRON_TZ=Asia/Manila 0 12,16,21 * * *` | Runs `T+120m` urgent owner push and Resend email escalations. |
 | `CRON_TZ=Asia/Manila 0 * * * *` | Runs hourly litter 48h/72h checks plus Wed 17:00 and Sat 11:00 play checks. |
 
 Match the schedule URL host with `NEXT_PUBLIC_APP_URL` because `/api/cron/tick` verifies `upstash-signature` against `${NEXT_PUBLIC_APP_URL}/api/cron/tick`.
@@ -95,4 +95,4 @@ Open `https://<your-domain>/h/<HOUSEHOLD_TOKEN>/setup` on the owner device to co
 3. Tap the Chrome menu, then tap **Install app** (or **Add to Home Screen**).
 4. Open **Maki Care** from the Home Screen icon, tap **Allow Phone Alerts**, and tap **Send Test Ping**.
 5. Open Android Settings -> Apps -> Chrome -> Battery, and choose **Unrestricted** (disable battery optimization).
-6. Add two native Android Clock alarms at `10:00 AM` and `7:00 PM` as offline backups.
+6. Add three native Android Clock alarms at `10:00 AM`, `2:00 PM`, and `7:00 PM` as offline backups.

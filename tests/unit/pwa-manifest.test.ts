@@ -25,6 +25,8 @@ describe("PWA household manifest builder", () => {
     expect(manifest.start_url).toBe("/h/abc-123?who=jed");
     expect(manifest.scope).toBe("/");
     expect(manifest.display).toBe("standalone");
+    expect(manifest.background_color).toBe("#FCF8F2");
+    expect(manifest.theme_color).toBe("#B3480F");
     expect(manifest.icons).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

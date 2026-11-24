@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -128,6 +129,7 @@ function formatPlatformLabel(platform: PushPlatform | null): string {
 function renderMatrixBadge(
   status:
     | DayComplianceCell["amStatus"]
+    | DayComplianceCell["midStatus"]
     | DayComplianceCell["pmStatus"]
     | DayComplianceCell["litterStatus"]
 ) {
@@ -445,7 +447,16 @@ export function OwnerDashboardView({
           <div
             className={`flex flex-wrap items-center justify-between gap-3 rounded-[12px] border px-4 py-3 ${survivabilityBannerStyle}`}
           >
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/maki/maki-portrait.jpg"
+                width={96}
+                height={96}
+                sizes="48px"
+                preload={true}
+                className="h-12 w-12 rounded-[14px] object-cover object-[50%_32%] shrink-0"
+                alt="Maki the orange tabby cat looking up"
+              />
               <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span className="font-display text-lg font-bold">
                 {snapshot.survivability.headline}
@@ -601,9 +612,19 @@ export function OwnerDashboardView({
             {UI_COPY.ownerView.timelineTitle}
           </h2>
           {history.todayTimeline.length === 0 ? (
-            <p className="mt-3 rounded-[12px] bg-[var(--bg-subtle)] p-3 text-sm text-[var(--ink-secondary)]">
-              No care actions logged today yet.
-            </p>
+            <div className="mt-3 flex items-center gap-3.5 rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-3.5">
+              <Image
+                src="/maki/maki-cozy.jpg"
+                width={144}
+                height={144}
+                sizes="72px"
+                className="h-18 w-18 rounded-[12px] object-cover object-center shrink-0"
+                alt="Maki curled up resting on a dark hoodie"
+              />
+              <p className="text-sm font-medium text-[var(--ink-secondary)]">
+                No care actions logged today yet. Maki is resting quietly at home.
+              </p>
+            </div>
           ) : (
             <ul className="mt-3 space-y-2.5">
               {history.todayTimeline.map((item) => {
@@ -745,6 +766,7 @@ export function OwnerDashboardView({
                 {(
                   [
                     { key: "am", label: "AM", desktopLabel: "AM Meal" },
+                    { key: "mid", label: "MID", desktopLabel: "Midday Meal" },
                     { key: "pm", label: "PM", desktopLabel: "PM Meal" },
                     { key: "litter", label: "Litter", desktopLabel: "Litter" },
                     { key: "play", label: "Play", desktopLabel: "Play" },
@@ -794,9 +816,11 @@ export function OwnerDashboardView({
                       const status =
                         row.key === "am"
                           ? day.amStatus
-                          : row.key === "pm"
-                            ? day.pmStatus
-                            : day.litterStatus;
+                          : row.key === "mid"
+                            ? day.midStatus
+                            : row.key === "pm"
+                              ? day.pmStatus
+                              : day.litterStatus;
                       const badge = renderMatrixBadge(status);
 
                       return (
@@ -836,6 +860,16 @@ export function OwnerDashboardView({
                     {selectedDay.details.amFedBy
                       ? `${selectedDay.details.amFedBy} at ${selectedDay.details.amFedAt}`
                       : renderMatrixBadge(selectedDay.amStatus).label}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="font-bold text-[var(--ink-primary)]">
+                    Midday Meal
+                  </dt>
+                  <dd>
+                    {selectedDay.details.midFedBy
+                      ? `${selectedDay.details.midFedBy} at ${selectedDay.details.midFedAt}`
+                      : renderMatrixBadge(selectedDay.midStatus).label}
                   </dd>
                 </div>
                 <div>

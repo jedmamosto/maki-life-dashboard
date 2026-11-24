@@ -12,7 +12,8 @@ export interface Caregiver {
   isActive: boolean;
 }
 
-export type FeedingPeriod = "AM" | "PM";
+export const FEEDING_PERIODS = ["AM", "MID", "PM"] as const;
+export type FeedingPeriod = (typeof FEEDING_PERIODS)[number];
 
 export type TaskVisualState = "UPCOMING" | "DUE_NOW" | "OVERDUE" | "DONE";
 
@@ -92,6 +93,8 @@ export interface HouseholdSettingsRecord {
   householdTimezone: string;
   amMealHour: number;
   amMealMinute: number;
+  midMealHour: number;
+  midMealMinute: number;
   pmMealHour: number;
   pmMealMinute: number;
   litterIntervalHours: number;
@@ -187,6 +190,7 @@ export interface PushHealthSummary {
 export interface HouseholdSettingsView {
   householdTimezone: string;
   amMealTime: string;
+  midMealTime: string;
   pmMealTime: string;
   litterIntervalHours: number;
   weeklyPlayGoal: number;
@@ -203,6 +207,7 @@ export interface DashboardSnapshot {
   survivability: SurvivabilitySummary;
   meals: {
     am: FeedingSlotView;
+    mid: FeedingSlotView;
     pm: FeedingSlotView;
   };
   litter: LitterStatusView;
@@ -223,12 +228,15 @@ export interface DayComplianceCell {
   shortLabel: string;
   weekdayLabel: string;
   amStatus: "ON_TIME" | "LATE" | "MISSED" | "UPCOMING";
+  midStatus: "ON_TIME" | "LATE" | "MISSED" | "UPCOMING";
   pmStatus: "ON_TIME" | "LATE" | "MISSED" | "UPCOMING";
   litterStatus: "DONE" | "LATE" | "MISSED" | "NOT_DUE";
   playCount: number;
   details: {
     amFedBy: string | null;
     amFedAt: string | null;
+    midFedBy: string | null;
+    midFedAt: string | null;
     pmFedBy: string | null;
     pmFedAt: string | null;
     litterBy: string | null;

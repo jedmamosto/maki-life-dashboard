@@ -4,7 +4,7 @@ Maki Life Dashboard tracks daily cat care in Manila (`Asia/Manila`). Caregivers 
 
 ## Overview
 
-- Care Board (`/h/[token]`): Tracks 10:00 AM and 7:00 PM meals, 48-hour litter cleans, food and litter supplies, and the weekly 3-session play goal.
+- Care Board (`/h/[token]`): Tracks `10:00 AM`, `2:00 PM`, and `7:00 PM` meals. It also tracks 48-hour litter cleans, supplies, and the weekly 3-session play goal.
 - Remote Owner View (`/h/[token]/owner`): Shows Manila house time, local browser time, 4 meal escalation stages (`T+0m`, `T+20m`, `T+45m`, `T+120m`), today's timeline, a 14-day history grid, push health, and PIN-locked settings.
 - Declarative PWA Web Push (`/h/[token]/setup`): Sends RFC 8030 declarative payloads and standard service worker alerts to installed Home Screen apps on iOS and Android.
 - 1-Tap Messenger Copy Bridge: Copies a pre-filled Messenger check-in message with the household dashboard link.

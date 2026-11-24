@@ -48,6 +48,7 @@ function normalizeAvatarColor(raw: string): AvatarColorKey {
     "#6D3B7D": "mom",
     "#2B5B84": "dad",
     "#4338CA": "owner",
+    "#B3480F": "owner",
   };
   return map[raw.toUpperCase()] ?? "helper";
 }
@@ -134,6 +135,8 @@ function mapSettingsRow(
     householdTimezone: row.householdTimezone,
     amMealHour: row.amMealHour,
     amMealMinute: row.amMealMinute,
+    midMealHour: row.midMealHour,
+    midMealMinute: row.midMealMinute,
     pmMealHour: row.pmMealHour,
     pmMealMinute: row.pmMealMinute,
     litterIntervalHours: row.litterIntervalHours,
@@ -165,6 +168,12 @@ export class PostgresCareRepository implements CareRepository {
     const db = this.getDb();
     if (!this.seededPromise) {
       this.seededPromise = (async () => {
+        await db.execute(
+          sql`ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS mid_meal_hour integer NOT NULL DEFAULT 14`,
+        );
+        await db.execute(
+          sql`ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS mid_meal_minute integer NOT NULL DEFAULT 0`,
+        );
         const initial = createInitialCareStore();
         for (const cg of SEEDED_CAREGIVERS) {
           await db
@@ -187,6 +196,8 @@ export class PostgresCareRepository implements CareRepository {
             householdTimezone: initial.settings.householdTimezone,
             amMealHour: initial.settings.amMealHour,
             amMealMinute: initial.settings.amMealMinute,
+            midMealHour: initial.settings.midMealHour,
+            midMealMinute: initial.settings.midMealMinute,
             pmMealHour: initial.settings.pmMealHour,
             pmMealMinute: initial.settings.pmMealMinute,
             litterIntervalHours: initial.settings.litterIntervalHours,
@@ -355,6 +366,10 @@ export class PostgresCareRepository implements CareRepository {
     if (patch.amMealHour !== undefined) updateValues.amMealHour = patch.amMealHour;
     if (patch.amMealMinute !== undefined)
       updateValues.amMealMinute = patch.amMealMinute;
+    if (patch.midMealHour !== undefined)
+      updateValues.midMealHour = patch.midMealHour;
+    if (patch.midMealMinute !== undefined)
+      updateValues.midMealMinute = patch.midMealMinute;
     if (patch.pmMealHour !== undefined) updateValues.pmMealHour = patch.pmMealHour;
     if (patch.pmMealMinute !== undefined)
       updateValues.pmMealMinute = patch.pmMealMinute;

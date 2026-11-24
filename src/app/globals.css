@@ -1,17 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  /* Warm Kitchen Care Board Surfaces & Hairlines */
-  --bg-canvas: #FAF7F2;
-  --bg-card: #FFFFFF;
-  --bg-subtle: #F2ECE2;
-  --border-hairline: #E5DDD0;
-  --border-control: #827666;
+  /* Maki Orange Tabby Warm Surfaces & Hairlines */
+  --bg-canvas: #FCF8F2;
+  --bg-card: #FFFDF9;
+  --bg-elevated: #FFFFFF;
+  --bg-subtle: #F4ECE1;
+  --bg-scrim: rgb(36 25 20 / 0.52);
+  --border-hairline: #E6DBD0;
+  --border-control: #8A7365;
 
   /* Typography & Ink Hierarchy (WCAG 2.2 AA >= 4.5:1 on canvas/card) */
-  --ink-primary: #1E293B;
-  --ink-secondary: #475569;
-  --ink-tertiary: #556272;
+  --ink-primary: #241914;
+  --ink-secondary: #57443A;
+  --ink-tertiary: #6E584C;
+
+  /* Brand Primary: Maki Orange Tabby */
+  --brand-bg: #FFF3E8;
+  --brand-border: #F5CBA7;
+  --brand-coat: #E87A2E;
+  --brand-primary: #B3480F;
+  --brand-strong: #8F390A;
+  --brand-on-primary: #FFFFFF;
+  --ring-focus: var(--brand-primary);
 
   /* Semantic Status: Sage (Safe / Done) */
   --sage-bg: #ECF6F0;
@@ -29,28 +40,34 @@
   /* Semantic Status: Coral (Overdue / Alert / Empty) */
   --coral-bg: #FDF0EE;
   --coral-border: #F1B8B0;
-  --coral-text: #B93829;
+  --coral-text: #B83227;
   --coral-accent: #C83E2E;
-  --coral-strong: #8C2418;
+  --coral-strong: #8A2218;
 
-  /* Semantic Status: Indigo (Owner / Weekly Bonus Play) */
-  --indigo-bg: #EEF0FB;
-  --indigo-border: #C7CDF4;
-  --indigo-text: #4338CA;
-  --indigo-accent: #4F46E5;
-  --indigo-strong: #312E81;
+  /* Coral-Pink Nose Secondary (Owner / Weekly Bonus Play) */
+  --pink-bg: #FFF1F1;
+  --pink-border: #F7C4C0;
+  --pink-nose: #F28B82;
+  --pink-text: #A83344;
+  --pink-strong: #8E2B3A;
+
+  --indigo-bg: var(--pink-bg);
+  --indigo-border: var(--pink-border);
+  --indigo-text: var(--pink-text);
+  --indigo-accent: var(--pink-nose);
+  --indigo-strong: var(--pink-strong);
 
   /* In-App Browser Guidance Banner */
-  --webview-bg: #E8F0FE;
-  --webview-border: #BFDBFE;
-  --webview-text: #1D4ED8;
+  --webview-bg: #FFF4E6;
+  --webview-border: #F5C896;
+  --webview-text: #9A3F08;
 
   /* Caregiver Avatar Fills (paired with #FFFFFF initials) */
   --avatar-helper: #1E6B5C;
   --avatar-mom: #6D3B7D;
   --avatar-dad: #2B5B84;
   --avatar-sibling: #9A5510;
-  --avatar-owner: #4338CA;
+  --avatar-owner: #B3480F;
 
   /* Varied Radii Hierarchy */
   --radius-sm: 8px;

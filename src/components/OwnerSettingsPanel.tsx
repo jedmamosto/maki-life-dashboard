@@ -133,6 +133,9 @@ export function OwnerSettingsPanel({
   const [amMealTime, setAmMealTime] = useState(
     initialSnapshot.settings.amMealTime
   );
+  const [midMealTime, setMidMealTime] = useState(
+    initialSnapshot.settings.midMealTime
+  );
   const [pmMealTime, setPmMealTime] = useState(
     initialSnapshot.settings.pmMealTime
   );
@@ -165,6 +168,7 @@ export function OwnerSettingsPanel({
   const syncFromSnapshot = (next: DashboardSnapshot) => {
     setSnapshot(next);
     setAmMealTime(next.settings.amMealTime);
+    setMidMealTime(next.settings.midMealTime);
     setPmMealTime(next.settings.pmMealTime);
     setLitterIntervalHours(String(next.settings.litterIntervalHours));
     setWeeklyPlayGoal(String(next.settings.weeklyPlayGoal));
@@ -199,6 +203,7 @@ export function OwnerSettingsPanel({
           method: "PATCH",
           body: JSON.stringify({
             amMealTime,
+            midMealTime,
             pmMealTime,
             litterIntervalHours: Number(litterIntervalHours),
             weeklyPlayGoal: Number(weeklyPlayGoal),
@@ -506,7 +511,24 @@ export function OwnerSettingsPanel({
               required
               value={amMealTime}
               onChange={(e) => setAmMealTime(e.target.value)}
-              className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+              className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="mid-meal-time"
+              className="block text-sm font-semibold text-[var(--ink-primary)]"
+            >
+              Midday Meal Time
+            </label>
+            <input
+              id="mid-meal-time"
+              type="time"
+              required
+              value={midMealTime}
+              onChange={(e) => setMidMealTime(e.target.value)}
+              className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
             />
           </div>
 
@@ -523,7 +545,7 @@ export function OwnerSettingsPanel({
               required
               value={pmMealTime}
               onChange={(e) => setPmMealTime(e.target.value)}
-              className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+              className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
             />
           </div>
 
@@ -586,7 +608,7 @@ export function OwnerSettingsPanel({
           type="submit"
           disabled={Boolean(savingSection)}
           data-testid="save-schedule-cta"
-          className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--sage-text)] px-4 font-display text-base font-bold text-white hover:bg-[var(--sage-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] focus-visible:ring-offset-2 disabled:opacity-65"
+          className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--brand-primary)] px-4 font-display text-base font-bold text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] focus-visible:ring-offset-2 disabled:opacity-65"
         >
           {savingSection === "schedule" ? (
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
@@ -911,7 +933,7 @@ export function OwnerSettingsPanel({
               type="submit"
               disabled={Boolean(savingSection) || !newPersonName.trim()}
               data-testid="add-person-cta"
-              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-[10px] bg-[var(--sage-text)] px-4 text-sm font-bold text-white hover:bg-[var(--sage-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] disabled:opacity-65"
+              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-[10px] bg-[var(--brand-primary)] px-4 text-sm font-bold text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] disabled:opacity-65"
             >
               {savingSection === "add-person" ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

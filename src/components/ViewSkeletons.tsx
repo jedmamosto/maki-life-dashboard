@@ -21,6 +21,7 @@ export function BoardLoadingSkeleton() {
           <div className="h-40 w-full animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
           <div className="h-40 w-full animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
           <div className="h-40 w-full animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
+          <div className="h-40 w-full animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="h-28 animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />

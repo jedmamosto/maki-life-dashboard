@@ -8,6 +8,7 @@ import {
   getEffectiveNow,
 } from "@/lib/dashboard-service";
 import {
+  getMealSchedule,
   makeSlotKey,
   parseSlotKey,
   resolveCaregiver,
@@ -23,7 +24,7 @@ import { parseJsonBody, problemResponse, requireHouseholdAuth } from "@/app/api/
 
 const FeedMealSchema = z
   .object({
-    period: z.enum(["AM", "PM"]).optional(),
+    period: z.enum(["AM", "MID", "PM"]).optional(),
     slotKey: z.string().min(1).optional(),
     serviceDate: z
       .string()
@@ -89,9 +90,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   const settings = await repo.getSettings();
-  const hour = period === "AM" ? settings.amMealHour : settings.pmMealHour;
-  const minute =
-    period === "AM" ? settings.amMealMinute : settings.pmMealMinute;
+  const { hour, minute } = getMealSchedule(settings, period);
   const scheduledAt = getSlotScheduledAt(serviceDate, hour, minute);
 
   if (!isWithinEarlyFeedWindow(now, scheduledAt, 90)) {

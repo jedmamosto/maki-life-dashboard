@@ -74,6 +74,7 @@ export const UI_COPY = {
 
   meals: {
     amTitle: "10:00 AM Meal",
+    midTitle: "2:00 PM Meal",
     pmTitle: "7:00 PM Meal",
     states: {
       UPCOMING: "Upcoming",
@@ -198,11 +199,11 @@ export const UI_COPY = {
     iosStepC: "Open Maki Care from your Home Screen icon.",
     androidStepA: "Tap the Chrome menu in the top corner.",
     androidStepB: "Tap Install app or Add to Home Screen.",
-    androidStepC: "Set Chrome battery to Unrestricted and add 10 AM / 7 PM phone alarms.",
+    androidStepC: "Set Chrome battery to Unrestricted and add 10 AM, 2 PM, and 7 PM alarms.",
     standaloneReady: "Running from Home Screen icon.",
     standaloneWaiting: "Open from the Home Screen icon to enable alerts.",
     step3Title: "3. Turn On Phone Alerts",
-    step3Body: "Lets this phone ring at 10:00 AM and 7:00 PM.",
+    step3Body: "Lets this phone ring at 10:00 AM, 2:00 PM, and 7:00 PM.",
     allowAlertsCta: "Allow Phone Alerts",
     alertsActiveText: "Phone alerts are active on this device.",
     alertsBlockedText:
@@ -242,7 +243,7 @@ export const UI_COPY = {
       mom: "Plum",
       dad: "Blue",
       sibling: "Amber",
-      owner: "Indigo",
+      owner: "Ginger",
     },
   },
 } as const;

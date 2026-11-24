@@ -123,6 +123,8 @@ export const householdSettings = pgTable("household_settings", {
   householdTimezone: text("household_timezone").notNull(),
   amMealHour: integer("am_meal_hour").notNull(),
   amMealMinute: integer("am_meal_minute").notNull(),
+  midMealHour: integer("mid_meal_hour").notNull().default(14),
+  midMealMinute: integer("mid_meal_minute").notNull().default(0),
   pmMealHour: integer("pm_meal_hour").notNull(),
   pmMealMinute: integer("pm_meal_minute").notNull(),
   litterIntervalHours: integer("litter_interval_hours").notNull(),

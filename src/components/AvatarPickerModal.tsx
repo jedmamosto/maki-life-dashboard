@@ -1,6 +1,7 @@
 "use client";
 
-import { Cat, Check } from "lucide-react";
+import Image from "next/image";
+import { Check } from "lucide-react";
 import type { Caregiver } from "@/lib/types";
 import { UI_COPY } from "@/lib/copy";
 import { CaregiverBadge } from "./CaregiverBadge";
@@ -28,20 +29,22 @@ export function AvatarPickerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 py-6 backdrop-blur-[2px] safe-top safe-bottom"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-scrim)] px-4 py-6 backdrop-blur-[2px] safe-top safe-bottom"
       role="dialog"
       aria-modal="true"
       aria-labelledby="avatar-picker-title"
       data-testid="avatar-picker-modal"
     >
       <div className="w-full max-w-md rounded-[24px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-5 sm:p-6">
-        <div className="flex items-center gap-3">
-          <span
+        <div className="flex items-center gap-3.5">
+          <Image
+            src="/maki/maki-portrait.jpg"
+            alt=""
             aria-hidden="true"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[var(--sage-bg)] border border-[var(--sage-border)] text-[var(--sage-strong)]"
-          >
-            <Cat className="h-5 w-5" />
-          </span>
+            width={104}
+            height={104}
+            className="h-13 w-13 shrink-0 rounded-full object-cover object-[50%_32%] ring-2 ring-[var(--brand-border)]"
+          />
           <div>
             <h2
               id="avatar-picker-title"

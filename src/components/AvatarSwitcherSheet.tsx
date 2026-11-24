@@ -5,6 +5,7 @@ import { Check, X } from "lucide-react";
 import type { Caregiver } from "@/lib/types";
 import { UI_COPY } from "@/lib/copy";
 import { CaregiverBadge } from "./CaregiverBadge";
+import { MakiCatIcon } from "./MakiCatIcon";
 
 interface AvatarSwitcherSheetProps {
   open: boolean;
@@ -53,7 +54,7 @@ export function AvatarSwitcherSheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/45 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[var(--bg-scrim)] backdrop-blur-[2px]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="avatar-switcher-title"
@@ -68,16 +69,19 @@ export function AvatarSwitcherSheet({
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--border-hairline)] sm:hidden" />
 
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2
-              id="avatar-switcher-title"
-              className="font-display text-xl font-bold tracking-[-0.02em] text-[var(--ink-primary)]"
-            >
-              {UI_COPY.avatarPicker.switchTitle}
-            </h2>
-            <p className="mt-0.5 text-sm text-[var(--ink-secondary)]">
-              {UI_COPY.avatarPicker.switchSubtitle}
-            </p>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <MakiCatIcon className="h-6 w-6 shrink-0" />
+            <div className="min-w-0">
+              <h2
+                id="avatar-switcher-title"
+                className="font-display text-xl font-bold tracking-[-0.02em] text-[var(--ink-primary)]"
+              >
+                {UI_COPY.avatarPicker.switchTitle}
+              </h2>
+              <p className="mt-0.5 text-sm text-[var(--ink-secondary)]">
+                {UI_COPY.avatarPicker.switchSubtitle}
+              </p>
+            </div>
           </div>
 
           <button

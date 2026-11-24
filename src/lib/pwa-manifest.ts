@@ -42,8 +42,8 @@ export function buildHouseholdManifest(
     start_url: startUrl,
     scope: "/",
     display: "standalone",
-    background_color: "#FAF7F2",
-    theme_color: "#1F6E4A",
+    background_color: "#FCF8F2",
+    theme_color: "#B3480F",
     icons: [
       {
         src: "/icons/icon-192.png",

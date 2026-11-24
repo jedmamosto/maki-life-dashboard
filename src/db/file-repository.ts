@@ -98,6 +98,8 @@ export function createInitialCareStore(): CareStoreSnapshot {
       householdTimezone: "Asia/Manila",
       amMealHour: 10,
       amMealMinute: 0,
+      midMealHour: 14,
+      midMealMinute: 0,
       pmMealHour: 19,
       pmMealMinute: 0,
       litterIntervalHours: 48,
@@ -157,7 +159,19 @@ export class MemoryCareRepository implements CareRepository {
   protected readonly mutex = new AsyncMutex();
 
   constructor(initial?: CareStoreSnapshot) {
-    this.state = initial ? structuredClone(initial) : createInitialCareStore();
+    const defaults = createInitialCareStore();
+    if (initial) {
+      const cloned = structuredClone(initial);
+      this.state = {
+        ...cloned,
+        settings: {
+          ...defaults.settings,
+          ...cloned.settings,
+        },
+      };
+    } else {
+      this.state = defaults;
+    }
   }
 
   protected async readState(): Promise<CareStoreSnapshot> {
@@ -685,7 +699,14 @@ export class FileCareRepository extends MemoryCareRepository {
     if (!this.initialized) {
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, "utf8");
-        this.state = JSON.parse(raw) as CareStoreSnapshot;
+        const parsed = JSON.parse(raw) as CareStoreSnapshot;
+        this.state = {
+          ...parsed,
+          settings: {
+            ...createInitialCareStore().settings,
+            ...parsed.settings,
+          },
+        };
       } else {
         this.state = createInitialCareStore();
         this.atomicWriteSync(this.state);
@@ -693,7 +714,14 @@ export class FileCareRepository extends MemoryCareRepository {
       this.initialized = true;
     } else if (fs.existsSync(this.filePath)) {
       const raw = fs.readFileSync(this.filePath, "utf8");
-      this.state = JSON.parse(raw) as CareStoreSnapshot;
+      const parsed = JSON.parse(raw) as CareStoreSnapshot;
+      this.state = {
+        ...parsed,
+        settings: {
+          ...createInitialCareStore().settings,
+          ...parsed.settings,
+        },
+      };
     }
     return this.state;
   }

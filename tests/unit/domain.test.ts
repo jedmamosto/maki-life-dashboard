@@ -60,6 +60,7 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
       caregivers: [...DEFAULT_CAREGIVERS],
       settings: makeSettings(),
       amLog: null,
+      midLog: null,
       pmLog: null,
       litterEvents: [recentClean],
       supplies: makeFullSupplies(),
@@ -70,6 +71,8 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
     expect(snapNoPlay.weeklyPlay.count).toBe(0);
     expect(snapNoPlay.survivability.status).toBe("SAFE");
     expect(snapNoPlay.survivability.score).toBe(100);
+    expect(snapNoPlay.survivability.totalCoreCount).toBe(6);
+    expect(snapNoPlay.meals.mid.scheduledTimeLabel).toBe("2:00 PM");
 
     // Late AM meal (10:50 AM PHT = 50m late) -> OVERDUE even with 3/3 weekly play
     const overdueNow = getSlotScheduledAt("2026-11-20", 10, 50);
@@ -88,6 +91,7 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
       caregivers: [...DEFAULT_CAREGIVERS],
       settings: makeSettings(),
       amLog: null,
+      midLog: null,
       pmLog: null,
       litterEvents: [recentClean],
       supplies: makeFullSupplies(),
@@ -137,6 +141,7 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
       caregivers: [...DEFAULT_CAREGIVERS],
       settings: makeSettings(),
       amLog: null,
+      midLog: null,
       pmLog,
       litterEvents: threeLitterCleans,
       supplies: makeFullSupplies(),
@@ -145,6 +150,7 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
     });
 
     expect(snap.meals.pm.showFoodStockPiggyback).toBe(true);
+    expect(snap.meals.mid.showFoodStockPiggyback).toBe(false);
     expect(snap.meals.am.showFoodStockPiggyback).toBe(false);
     expect(snap.litter.totalCleansCount).toBe(3);
     expect(snap.litter.showLitterStockPiggyback).toBe(true);
@@ -157,6 +163,7 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
       caregivers: [...DEFAULT_CAREGIVERS],
       settings: makeSettings(),
       amLog: null,
+      midLog: null,
       pmLog: {
         ...pmLog,
         id: "feed-fri-pm",
@@ -178,6 +185,7 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
       todayDateKey: "2026-11-20",
       settings,
       amLog: null,
+      midLog: null,
       pmLog: null,
     };
 
@@ -196,6 +204,25 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
     expect(
       computeEscalationStage({ ...args, now: getSlotScheduledAt("2026-11-20", 12, 0) }),
     ).toBe("T120_OWNER");
+
+    // When AM is fed, MID (14:00) drives escalation
+    const amFed: FeedingLogRecord = {
+      id: "f-am",
+      slotKey: "2026-11-20:AM",
+      serviceDate: "2026-11-20",
+      period: "AM",
+      dueAtIso: getSlotScheduledAt("2026-11-20", 10, 0).toISOString(),
+      completedById: "ate",
+      completedAtIso: getSlotScheduledAt("2026-11-20", 10, 0).toISOString(),
+      undoneAtIso: null,
+    };
+    expect(
+      computeEscalationStage({
+        ...args,
+        amLog: amFed,
+        now: getSlotScheduledAt("2026-11-20", 14, 25),
+      }),
+    ).toBe("T20_HELPER");
   });
 
   it("[AC-030] builds exact 14 Manila calendar day history [today - 13d .. today]", () => {
@@ -224,6 +251,7 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
     expect(history.days[0].dateKey).toBe("2026-11-07");
     expect(history.days[13].dateKey).toBe("2026-11-20");
     expect(history.days[13].amStatus).toBe("ON_TIME");
+    expect(history.days[13].midStatus).toBe("UPCOMING");
     expect(history.days[13].pmStatus).toBe("UPCOMING");
     expect(history.todayTimeline.length).toBeGreaterThanOrEqual(1);
   });

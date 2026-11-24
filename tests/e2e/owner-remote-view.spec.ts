@@ -58,8 +58,14 @@ test.describe("Owner Remote View: 14-Day History, Push Health, and Messenger Nud
       .getByRole("button");
     await expect(amRowCells).toHaveCount(14);
 
+    const midRowCells = historyTable
+      .getByRole("row", { name: /Midday Meal/i })
+      .getByRole("button");
+    await expect(midRowCells).toHaveCount(14);
+
     for (const dateKey of expected14Days) {
       await expect(page.getByTestId(`history-cell-${dateKey}-am`)).toBeVisible();
+      await expect(page.getByTestId(`history-cell-${dateKey}-mid`)).toBeVisible();
     }
     await expect(page.getByTestId("history-cell-2026-04-30-am")).toHaveCount(0);
     await expect(page.getByTestId("history-cell-2026-05-01-am")).toHaveCount(0);

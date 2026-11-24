@@ -169,4 +169,29 @@ describe("API integration: care logging, concurrency, undo, supplies, play", () 
     expect(dash.weeklyPlay.isoWeekKey).toBe("2027-W01");
     expect(dash.weeklyPlay.count).toBe(0);
   });
+
+  it("supports MID (2:00 PM) feed, undo, and default midMealTime in dashboard settings", async () => {
+    harness.clock.setIso(getSlotScheduledAt("2026-11-20", 14, 5).toISOString());
+    const feedRes = await postMealFeed(
+      await harness.authedRequest("/api/meals/feed", {
+        method: "POST",
+        body: JSON.stringify({ period: "MID", caregiverId: "ate" }),
+      }),
+    );
+    expect(feedRes.status).toBe(201);
+    const feedData = await feedRes.json();
+    expect(feedData.snapshot.settings.midMealTime).toBe("14:00");
+    expect(feedData.snapshot.meals.mid.state).toBe("DONE");
+    expect(feedData.snapshot.meals.mid.completedBy.slug).toBe("ate");
+
+    const undoRes = await postMealUndo(
+      await harness.authedRequest("/api/meals/undo", {
+        method: "POST",
+        body: JSON.stringify({ period: "MID" }),
+      }),
+    );
+    expect(undoRes.status).toBe(200);
+    const undoData = await undoRes.json();
+    expect(undoData.snapshot.meals.mid.state).toBe("DUE_NOW");
+  });
 });

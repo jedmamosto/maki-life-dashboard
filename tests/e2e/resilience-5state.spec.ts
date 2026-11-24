@@ -74,15 +74,15 @@ test.describe("5-State Resilience Matrix and Viewport Geometry Audit", () => {
     expect(feedAttempts).toBe(2);
     await page.unroute("**/api/meals/feed");
 
-    // 3. PARTIAL STATE: AM Meal Done + PM Meal Upcoming + Litter Due Now -> 3 of 5 Core
+    // 3. PARTIAL STATE: AM Meal Done + Midday/PM Meals Upcoming + Litter Due Now -> 3 of 6 Core
     const crest = page.getByRole("region", {
       name: "Maki Survivability Status",
     });
-    await expect(crest.getByText("3 of 5 Core")).toBeVisible();
+    await expect(crest.getByText("3 of 6 Core")).toBeVisible();
 
     // 4. IDEAL STATE: Clean litter + 3 weekly play sessions -> Goal Done & Maki is Safe
     await page.getByRole("button", { name: "Mark Litter Cleaned" }).click();
-    await expect(crest.getByText("4 of 5 Core")).toBeVisible();
+    await expect(crest.getByText("4 of 6 Core")).toBeVisible();
     await expect(
       crest.getByRole("heading", { name: "Maki is Safe" }),
     ).toBeVisible();

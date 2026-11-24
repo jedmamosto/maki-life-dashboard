@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { MakiCatIcon } from "./MakiCatIcon";
 import {
   AlertCircle,
   Bell,
@@ -319,13 +321,23 @@ export function PhoneSetupWizard({
       />
 
       <main className="mx-auto max-w-2xl space-y-5 px-4 pt-5">
-        <header>
-          <h1 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-[var(--ink-primary)]">
-            {UI_COPY.setupView.title}
-          </h1>
-          <p className="mt-1 text-sm sm:text-base text-[var(--ink-secondary)]">
-            {UI_COPY.setupView.subtitle}
-          </p>
+        <header className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-[16px] border border-[var(--brand-border)] bg-[var(--brand-bg)] p-4">
+          <Image
+            src="/maki/maki-suitcase.jpg"
+            alt="Maki sitting inside an open purple suitcase"
+            width={224}
+            height={192}
+            preload={true}
+            className="h-24 w-full sm:w-28 rounded-[12px] object-cover object-[50%_38%] shrink-0"
+          />
+          <div className="min-w-0">
+            <h1 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-[var(--ink-primary)]">
+              {UI_COPY.setupView.title}
+            </h1>
+            <p className="mt-1 text-sm sm:text-base text-[var(--ink-secondary)]">
+              {UI_COPY.setupView.subtitle}
+            </p>
+          </div>
         </header>
 
         {/* Member Selector */}
@@ -423,9 +435,17 @@ export function PhoneSetupWizard({
           className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4 sm:p-5 space-y-3"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-display text-lg font-bold text-[var(--ink-primary)]">
-              {UI_COPY.setupView.step2Title}
-            </h2>
+            <div className="flex items-center gap-2.5">
+              <span
+                aria-hidden="true"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[var(--brand-border)] bg-[var(--brand-bg)]"
+              >
+                <MakiCatIcon className="h-6 w-6" />
+              </span>
+              <h2 className="font-display text-lg font-bold text-[var(--ink-primary)]">
+                {UI_COPY.setupView.step2Title}
+              </h2>
+            </div>
             <div className="flex gap-1.5">
               <button
                 type="button"
@@ -528,7 +548,7 @@ export function PhoneSetupWizard({
             disabled={subscribing}
             onClick={() => void handleEnableAlerts()}
             data-testid="allow-alerts-cta"
-            className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--sage-text)] px-4 font-display text-base font-bold text-white hover:bg-[var(--sage-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] focus-visible:ring-offset-2 disabled:opacity-65 kitchen-transition"
+            className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--brand-primary)] px-4 font-display text-base font-bold text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] focus-visible:ring-offset-2 disabled:opacity-65 kitchen-transition"
           >
             {subscribing ? (
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />

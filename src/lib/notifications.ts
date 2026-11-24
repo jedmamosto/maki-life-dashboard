@@ -9,6 +9,7 @@ import { PUSH_TEMPLATES, UI_COPY } from "./copy";
 import {
   MEAL_ESCALATION_TIERS,
   type MealEscalationTier,
+  getMealSchedule,
   getNotificationTemplateForMealTier,
   makeSlotKey,
   mealDispatchKey,
@@ -376,7 +377,7 @@ export async function runCronEscalations(params: {
   let dispatchedCount = 0;
   let emailsSent = 0;
 
-  // 1. Meal Escalations for today's Manila slots (AM and PM)
+  // 1. Meal Escalations for today's Manila slots (AM, MID, and PM)
   const evaluateMealSlot = async (period: FeedingPeriod): Promise<void> => {
     const slotKey = makeSlotKey(todayDateKey, period);
     const activeFeeding = await repo.getActiveFeedingBySlot(slotKey);
@@ -384,9 +385,7 @@ export async function runCronEscalations(params: {
       return;
     }
 
-    const hour = period === "AM" ? settings.amMealHour : settings.pmMealHour;
-    const minute =
-      period === "AM" ? settings.amMealMinute : settings.pmMealMinute;
+    const { hour, minute } = getMealSchedule(settings, period);
     const scheduledAt = getSlotScheduledAt(todayDateKey, hour, minute);
     const diffMs = now.getTime() - scheduledAt.getTime();
     if (diffMs < 0) {
@@ -469,6 +468,7 @@ export async function runCronEscalations(params: {
   };
 
   await evaluateMealSlot("AM");
+  await evaluateMealSlot("MID");
   await evaluateMealSlot("PM");
 
   // 2. Litter Escalations (Day+2 Helper clamped to Quiet Hours; Day+3 Owner immediate)

@@ -78,6 +78,11 @@ export async function POST(request: Request): Promise<NextResponse> {
         settings.amMealHour,
         settings.amMealMinute,
       );
+      const midDue = getSlotScheduledAt(
+        dateKey,
+        settings.midMealHour,
+        settings.midMealMinute,
+      );
       const pmDue = getSlotScheduledAt(
         dateKey,
         settings.pmMealHour,
@@ -90,6 +95,14 @@ export async function POST(request: Request): Promise<NextResponse> {
         dueAtIso: amDue.toISOString(),
         completedById: "ate",
         completedAtIso: new Date(amDue.getTime() + 5 * 60_000).toISOString(),
+      });
+      await repo.logFeedingAtomic({
+        slotKey: makeSlotKey(dateKey, "MID"),
+        serviceDate: dateKey,
+        period: "MID",
+        dueAtIso: midDue.toISOString(),
+        completedById: "ate",
+        completedAtIso: new Date(midDue.getTime() + 5 * 60_000).toISOString(),
       });
       await repo.logFeedingAtomic({
         slotKey: makeSlotKey(dateKey, "PM"),

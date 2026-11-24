@@ -225,6 +225,14 @@ describe("notification & escalation pipeline", () => {
       completedAtIso: getSlotScheduledAt("2026-11-23", 9, 0).toISOString(),
     });
     await repo.logFeedingAtomic({
+      slotKey: "2026-11-23:MID",
+      serviceDate: "2026-11-23",
+      period: "MID",
+      dueAtIso: getSlotScheduledAt("2026-11-23", 14, 0).toISOString(),
+      completedById: "ate",
+      completedAtIso: getSlotScheduledAt("2026-11-23", 14, 0).toISOString(),
+    });
+    await repo.logFeedingAtomic({
       slotKey: "2026-11-23:PM",
       serviceDate: "2026-11-23",
       period: "PM",
@@ -276,6 +284,14 @@ describe("notification & escalation pipeline", () => {
       dueAtIso: getSlotScheduledAt("2026-11-18", 10, 0).toISOString(),
       completedById: "ate",
       completedAtIso: getSlotScheduledAt("2026-11-18", 10, 0).toISOString(),
+    });
+    await repo.logFeedingAtomic({
+      slotKey: "2026-11-18:MID",
+      serviceDate: "2026-11-18",
+      period: "MID",
+      dueAtIso: getSlotScheduledAt("2026-11-18", 14, 0).toISOString(),
+      completedById: "ate",
+      completedAtIso: getSlotScheduledAt("2026-11-18", 14, 0).toISOString(),
     });
 
     await runCronEscalations({
@@ -350,5 +366,33 @@ describe("notification & escalation pipeline", () => {
     const ownerAlerts = push.sent.filter((s) => s.endpoint === "https://push.example/jed");
     expect(ownerAlerts).toHaveLength(1);
     expect(ownerAlerts[0].payload.notification.title).toContain("Helper");
+  });
+
+  it("escalates MID (2:00 PM) meal independently when AM is already fed", async () => {
+    await repo.logCareEvent({
+      id: "clean-mid",
+      eventType: "LITTER_CLEAN",
+      caregiverId: "ate",
+      occurredAtIso: getSlotScheduledAt("2026-11-20", 8, 0).toISOString(),
+      isoWeekKey: "2026-W47",
+      idempotencyKey: "clean-mid",
+    });
+    await repo.logFeedingAtomic({
+      slotKey: "2026-11-20:AM",
+      serviceDate: "2026-11-20",
+      period: "AM",
+      dueAtIso: getSlotScheduledAt("2026-11-20", 10, 0).toISOString(),
+      completedById: "ate",
+      completedAtIso: getSlotScheduledAt("2026-11-20", 10, 0).toISOString(),
+    });
+
+    await runCronEscalations({
+      repo,
+      now: getSlotScheduledAt("2026-11-20", 14, 0),
+      baseUrl: "http://localhost:3000",
+    });
+    expect(push.sent).toHaveLength(1);
+    expect(push.sent[0].endpoint).toBe("https://push.example/ate");
+    expect(push.sent[0].payload.notification.title).toContain("2:00 PM");
   });
 });

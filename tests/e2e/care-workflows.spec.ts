@@ -64,6 +64,18 @@ test.describe("Care Workflows, Cross-Context Sync, Timezone Boundaries, Debounce
       await pageA.reload();
       await expect(pageA.getByText(/Mon, May 11 • 10:15 AM/)).toBeVisible();
 
+      // Verify all three daily meal cards render on Care Board
+      await expect(
+        pageA
+          .getByRole("article")
+          .filter({ has: pageA.getByRole("heading", { name: "2:00 PM Meal" }) }),
+      ).toBeVisible();
+      await expect(
+        pageA
+          .getByRole("article")
+          .filter({ has: pageA.getByRole("heading", { name: "7:00 PM Meal" }) }),
+      ).toBeVisible();
+
       // 3. Rapid double-click debounce on Mark Fed (delayed POST /api/meals/feed -> exactly 1 request)
       let feedRequestCount = 0;
       await pageA.route("**/api/meals/feed", async (route) => {

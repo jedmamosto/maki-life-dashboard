@@ -44,9 +44,12 @@ const CaregiverUpdateSchema = z.object({
 const UpdateSettingsSchema = z.object({
   amMealHour: z.number().int().min(0).max(23).optional(),
   amMealMinute: z.number().int().min(0).max(59).optional(),
+  midMealHour: z.number().int().min(0).max(23).optional(),
+  midMealMinute: z.number().int().min(0).max(59).optional(),
   pmMealHour: z.number().int().min(0).max(23).optional(),
   pmMealMinute: z.number().int().min(0).max(59).optional(),
   amMealTime: TimeStringSchema.optional(),
+  midMealTime: TimeStringSchema.optional(),
   pmMealTime: TimeStringSchema.optional(),
   litterIntervalHours: z.number().int().min(12).max(168).optional(),
   weeklyPlayGoal: z.number().int().min(1).max(14).optional(),
@@ -141,6 +144,15 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   } else {
     if (data.amMealHour !== undefined) patch.amMealHour = data.amMealHour;
     if (data.amMealMinute !== undefined) patch.amMealMinute = data.amMealMinute;
+  }
+
+  if (data.midMealTime) {
+    const t = parseTimeString(data.midMealTime);
+    patch.midMealHour = t.hour;
+    patch.midMealMinute = t.minute;
+  } else {
+    if (data.midMealHour !== undefined) patch.midMealHour = data.midMealHour;
+    if (data.midMealMinute !== undefined) patch.midMealMinute = data.midMealMinute;
   }
 
   if (data.pmMealTime) {

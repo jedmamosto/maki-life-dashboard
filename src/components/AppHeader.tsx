@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Cat, ChevronDown, Settings } from "lucide-react";
+import { ChevronDown, Settings } from "lucide-react";
 import { canAccessNavTab, type AppNavTab } from "@/lib/role-access";
 import type { Caregiver, CaregiverRole } from "@/lib/types";
 import { UI_COPY } from "@/lib/copy";
 import { CaregiverBadge } from "./CaregiverBadge";
+import { MakiCatIcon } from "./MakiCatIcon";
 
 export type ActiveNavTab = AppNavTab;
 
@@ -62,13 +63,13 @@ export function AppHeader({
         <div className="flex items-center justify-between gap-2">
           <Link
             href={`${basePath}${whoQuery}`}
-            className="flex min-h-[44px] min-w-0 items-center gap-2.5 rounded-[12px] pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+            className="flex min-h-[44px] min-w-0 items-center gap-2.5 rounded-[12px] pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
           >
             <span
               aria-hidden="true"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--sage-text)] text-white"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[var(--brand-border)] bg-[var(--brand-bg)]"
             >
-              <Cat className="h-5 w-5" />
+              <MakiCatIcon className="h-6 w-6" />
             </span>
             <span className="min-w-0">
               <span className="block truncate font-display text-lg font-bold tracking-[-0.02em] text-[var(--ink-primary)] leading-tight">
@@ -93,7 +94,7 @@ export function AppHeader({
                     ? `${activeCaregiver.displayName}, ${UI_COPY.avatarPicker.switchTitle}`
                     : UI_COPY.avatarPicker.switchTitle
                 }
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--border-control)] bg-[var(--bg-card)] pl-1.5 pr-3 py-1 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] kitchen-transition"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-[var(--border-control)] bg-[var(--bg-card)] pl-1.5 pr-3 py-1 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] kitchen-transition"
               >
                 {activeCaregiver ? (
                   <>
@@ -121,7 +122,7 @@ export function AppHeader({
                 href={`${basePath}/settings${whoQuery}`}
                 aria-label={UI_COPY.ownerSettings.settingsTitle}
                 aria-current={activeTab === "settings" ? "page" : undefined}
-                className={`inline-flex h-11 w-11 items-center justify-center rounded-[12px] border kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                className={`inline-flex h-11 w-11 items-center justify-center rounded-[12px] border kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                   activeTab === "settings"
                     ? "border-[var(--indigo-border)] bg-[var(--indigo-bg)] text-[var(--indigo-text)]"
                     : "border-[var(--border-hairline)] bg-[var(--bg-card)] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
@@ -145,9 +146,9 @@ export function AppHeader({
                   key={item.key}
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
-                  className={`inline-flex min-h-[44px] items-center justify-center rounded-[12px] border px-2 text-center text-xs sm:text-sm font-semibold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                  className={`inline-flex min-h-[44px] items-center justify-center rounded-[12px] border px-2 text-center text-xs sm:text-sm font-semibold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                     isActive
-                      ? "border-[var(--sage-border)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
+                      ? "border-[var(--brand-border)] bg-[var(--brand-bg)] text-[var(--brand-strong)]"
                       : "border-[var(--border-hairline)] bg-[var(--bg-card)] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
                   }`}
                 >
