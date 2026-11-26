@@ -442,21 +442,23 @@ export function OwnerDashboardView({
         {/* Dual-Clock Survivability Banner + 4-Stage Escalation Strip */}
         <section
           aria-label="Dual Clock Survivability"
-          className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4 sm:p-5 space-y-4"
+          className="rounded-[20px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5 space-y-4"
         >
           <div
-            className={`flex flex-wrap items-center justify-between gap-3 rounded-[12px] border px-4 py-3 ${survivabilityBannerStyle}`}
+            className={`flex flex-wrap items-center justify-between gap-3 rounded-[14px] border px-4 py-3 ${survivabilityBannerStyle}`}
           >
-            <div className="flex items-center gap-3">
-              <Image
-                src="/maki/maki-portrait.jpg"
-                width={96}
-                height={96}
-                sizes="48px"
-                preload={true}
-                className="h-12 w-12 rounded-[14px] object-cover object-[50%_32%] shrink-0"
-                alt="Maki the orange tabby cat looking up"
-              />
+            <div className="flex items-center gap-3.5">
+              <div className="shrink-0 rounded-[14px] border border-[var(--border-hairline)] bg-white p-1 sunlit-polaroid -rotate-1">
+                <Image
+                  src="/maki/maki-portrait.jpg"
+                  width={96}
+                  height={96}
+                  sizes="48px"
+                  preload={true}
+                  className="h-12 w-12 rounded-[10px] object-cover object-[50%_32%]"
+                  alt="Maki the orange tabby cat looking up"
+                />
+              </div>
               <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span className="font-display text-lg font-bold">
                 {snapshot.survivability.headline}
@@ -473,7 +475,7 @@ export function OwnerDashboardView({
             data-testid="dual-clock-grid"
             className="grid grid-cols-1 sm:grid-cols-2 gap-3"
           >
-            <div className="rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5">
+            <div className="rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)]/60 p-3.5">
               <div className="text-xs font-bold uppercase tracking-wide text-[var(--ink-tertiary)]">
                 {UI_COPY.ownerView.houseTimeLabel}
               </div>
@@ -485,7 +487,7 @@ export function OwnerDashboardView({
               </div>
             </div>
 
-            <div className="rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5">
+            <div className="rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)]/60 p-3.5">
               <div className="text-xs font-bold uppercase tracking-wide text-[var(--ink-tertiary)]">
                 {UI_COPY.ownerView.localTimeLabel}
               </div>
@@ -551,7 +553,7 @@ export function OwnerDashboardView({
         <section
           aria-label={UI_COPY.ownerView.nudgeCardTitle}
           data-testid="messenger-nudge-card"
-          className="rounded-[16px] border border-[var(--indigo-border)] bg-[var(--indigo-bg)] p-4 sm:p-5 space-y-3"
+          className="rounded-[16px] border border-[var(--indigo-border)] bg-[var(--indigo-bg)] sunlit-card p-4 sm:p-5 space-y-3"
         >
           <h2 className="font-display text-lg font-bold text-[var(--indigo-strong)]">
             {UI_COPY.ownerView.nudgeCardTitle}
@@ -582,7 +584,7 @@ export function OwnerDashboardView({
             type="button"
             onClick={() => void handleCopyNudge()}
             data-testid="copy-messenger-nudge-cta"
-            className={`inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] px-4 font-display text-base font-bold text-white kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+            className={`inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] px-4 font-display text-base font-bold text-white kitchen-transition sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
               nudgeCopied
                 ? "bg-[var(--sage-text)] focus-visible:ring-[var(--sage-text)]"
                 : "bg-[var(--indigo-text)] hover:bg-[var(--indigo-strong)] focus-visible:ring-[var(--indigo-text)]"
@@ -606,7 +608,7 @@ export function OwnerDashboardView({
         <section
           aria-label={UI_COPY.ownerView.timelineTitle}
           data-testid="today-care-timeline"
-          className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4 sm:p-5"
+          className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5"
         >
           <h2 className="font-display text-lg font-bold text-[var(--ink-primary)]">
             {UI_COPY.ownerView.timelineTitle}
@@ -682,7 +684,7 @@ export function OwnerDashboardView({
         <section
           aria-label={UI_COPY.ownerView.historyTitle}
           data-testid="care-history-section"
-          className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4 sm:p-5 space-y-4"
+          className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5 space-y-4"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -911,7 +913,7 @@ export function OwnerDashboardView({
         <section
           aria-label={UI_COPY.ownerView.pushHealthTitle}
           data-testid="push-health-panel"
-          className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4 sm:p-5 space-y-4"
+          className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5 space-y-4"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

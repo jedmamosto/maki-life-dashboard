@@ -321,15 +321,17 @@ export function PhoneSetupWizard({
       />
 
       <main className="mx-auto max-w-2xl space-y-5 px-4 pt-5">
-        <header className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-[16px] border border-[var(--brand-border)] bg-[var(--brand-bg)] p-4">
-          <Image
-            src="/maki/maki-suitcase.jpg"
-            alt="Maki sitting inside an open purple suitcase"
-            width={224}
-            height={192}
-            preload={true}
-            className="h-24 w-full sm:w-28 rounded-[12px] object-cover object-[50%_38%] shrink-0"
-          />
+        <header className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-[20px] border border-[var(--brand-border)] bg-[var(--brand-bg)] sunlit-card p-4">
+          <div className="shrink-0 rounded-[14px] border border-[var(--border-hairline)] bg-white p-1 sunlit-polaroid -rotate-1">
+            <Image
+              src="/maki/maki-suitcase.jpg"
+              alt="Maki sitting inside an open purple suitcase"
+              width={224}
+              height={192}
+              preload={true}
+              className="h-24 w-full sm:w-28 rounded-[10px] object-cover object-[50%_38%]"
+            />
+          </div>
           <div className="min-w-0">
             <h1 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-[var(--ink-primary)]">
               {UI_COPY.setupView.title}
@@ -446,15 +448,15 @@ export function PhoneSetupWizard({
                 {UI_COPY.setupView.step2Title}
               </h2>
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1 rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-track)] p-1">
               <button
                 type="button"
                 onClick={() => setManualGuidePlatform("ios")}
                 aria-pressed={guidePlatform === "ios"}
-                className={`min-h-[44px] rounded-[10px] border px-3 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                className={`min-h-[44px] rounded-[8px] border px-3 text-xs font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
                   guidePlatform === "ios"
-                    ? "border-[var(--sage-text)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
-                    : "border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[var(--ink-secondary)]"
+                    ? "border-[var(--sage-border)] bg-[var(--bg-card)] text-[var(--sage-strong)] shadow-[var(--shadow-pill)]"
+                    : "border-transparent text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
                 }`}
               >
                 iPhone / Safari
@@ -463,10 +465,10 @@ export function PhoneSetupWizard({
                 type="button"
                 onClick={() => setManualGuidePlatform("android")}
                 aria-pressed={guidePlatform === "android"}
-                className={`min-h-[44px] rounded-[10px] border px-3 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                className={`min-h-[44px] rounded-[8px] border px-3 text-xs font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
                   guidePlatform === "android"
-                    ? "border-[var(--sage-text)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
-                    : "border-[var(--border-hairline)] bg-[var(--bg-canvas)] text-[var(--ink-secondary)]"
+                    ? "border-[var(--sage-border)] bg-[var(--bg-card)] text-[var(--sage-strong)] shadow-[var(--shadow-pill)]"
+                    : "border-transparent text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
                 }`}
               >
                 Android / Chrome

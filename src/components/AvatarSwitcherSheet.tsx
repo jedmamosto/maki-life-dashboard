@@ -65,7 +65,7 @@ export function AvatarSwitcherSheet({
         aria-hidden="true"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-md rounded-t-[24px] sm:rounded-[24px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-5 sm:p-6 safe-bottom">
+      <div className="relative z-10 w-full max-w-md rounded-t-[24px] sm:rounded-[24px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-5 sm:p-6 safe-bottom">
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--border-hairline)] sm:hidden" />
 
         <div className="flex items-start justify-between gap-3">

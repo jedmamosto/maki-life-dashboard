@@ -137,7 +137,7 @@ export function AppHeader({
         {navItems.length > 1 ? (
           <nav
             aria-label="Household Views"
-            className={`mt-2.5 grid ${navGridColsClass} gap-2`}
+            className={`mt-2.5 grid ${navGridColsClass} gap-1 rounded-[14px] border border-[var(--border-hairline)] bg-[var(--bg-track)] p-1`}
           >
             {navItems.map((item) => {
               const isActive = activeTab === item.key;
@@ -146,10 +146,10 @@ export function AppHeader({
                   key={item.key}
                   href={item.href}
                   aria-current={isActive ? "page" : undefined}
-                  className={`inline-flex min-h-[44px] items-center justify-center rounded-[12px] border px-2 text-center text-xs sm:text-sm font-semibold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
+                  className={`inline-flex min-h-[44px] items-center justify-center rounded-[10px] border px-2 text-center text-xs sm:text-sm kitchen-transition sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                     isActive
-                      ? "border-[var(--brand-border)] bg-[var(--brand-bg)] text-[var(--brand-strong)]"
-                      : "border-[var(--border-hairline)] bg-[var(--bg-card)] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
+                      ? "border-[var(--brand-border)] bg-[var(--bg-card)] font-bold text-[var(--brand-strong)] shadow-[var(--shadow-pill)]"
+                      : "border-transparent font-semibold text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
                   }`}
                 >
                   <span className="truncate">{item.label}</span>

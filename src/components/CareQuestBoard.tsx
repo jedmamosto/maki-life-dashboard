@@ -610,7 +610,7 @@ export function CareQuestBoard({
         }
         aria-expanded={isExpanded}
         data-testid={`supply-card-${supply.key.toLowerCase()}`}
-        className={`flex min-h-[104px] flex-col justify-between rounded-[16px] border p-3.5 text-left kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
+        className={`flex min-h-[104px] flex-col justify-between rounded-[16px] border p-3.5 text-left kitchen-transition sunlit-card sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
           isExpanded
             ? "border-[var(--border-control)] bg-[var(--bg-subtle)]"
             : "border-[var(--border-hairline)] bg-[var(--bg-card)] hover:border-[var(--border-control)]"
@@ -630,14 +630,14 @@ export function CareQuestBoard({
           </span>
         </div>
 
-        <div className="mt-2.5 flex w-full items-center gap-1" aria-hidden="true">
+        <div className="mt-2.5 flex w-full items-center gap-1.5" aria-hidden="true">
           {[1, 2, 3, 4].map((pip) => (
             <span
               key={pip}
-              className={`h-2 flex-1 rounded-full ${
+              className={`h-2.5 flex-1 rounded-full ${
                 pip <= pipCount
                   ? tone.pipColor
-                  : "bg-[var(--bg-subtle)] border border-[var(--border-hairline)]"
+                  : "bg-[var(--bg-track)] border border-[var(--border-hairline)]"
               }`}
             />
           ))}
@@ -681,18 +681,31 @@ export function CareQuestBoard({
     })();
 
     const isEarlyBlocked = slot.state === "UPCOMING" && !slot.canLogEarly;
+    const isActionFocus = slot.state === "DUE_NOW" || slot.state === "OVERDUE";
 
     return (
       <article
         key={slot.slotKey}
         data-testid={`meal-card-${slot.period.toLowerCase()}`}
-        className={`rounded-[16px] border ${tone.border} bg-[var(--bg-card)] p-4 sm:p-5`}
+        className={`rounded-[16px] bg-[var(--bg-card)] ${
+          isActionFocus
+            ? slot.state === "OVERDUE"
+              ? "border-2 border-[var(--coral-accent)] sunlit-hero-card p-4 sm:p-5"
+              : "border-2 border-[var(--brand-coat)] sunlit-hero-card p-4 sm:p-5"
+            : `border ${tone.border} sunlit-card p-3.5 sm:p-4`
+        }`}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <span
               aria-hidden="true"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--bg-subtle)] text-[var(--ink-primary)]"
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] ${
+                slot.state === "OVERDUE"
+                  ? "bg-[var(--coral-bg)] text-[var(--coral-strong)]"
+                  : slot.state === "DUE_NOW"
+                    ? "bg-[var(--brand-bg)] text-[var(--brand-primary)]"
+                    : "bg-[var(--bg-subtle)] text-[var(--ink-secondary)]"
+              }`}
             >
               <Utensils className="h-5 w-5" />
             </span>
@@ -728,7 +741,7 @@ export function CareQuestBoard({
                 isEarlyBlocked ? `early-hint-${slot.slotKey}` : undefined
               }
               data-testid={`feed-cta-${slot.period.toLowerCase()}`}
-              className={`inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] px-4 font-display text-base font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+              className={`inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] px-4 font-display text-base font-bold kitchen-transition sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                 isEarlyBlocked
                   ? "cursor-not-allowed border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--ink-tertiary)]"
                   : slot.state === "OVERDUE"
@@ -908,10 +921,13 @@ export function CareQuestBoard({
     );
   })();
 
-  const clampedPlayPercent = Math.min(
-    100,
-    Math.max(0, snapshot.weeklyPlay.progressPercent)
-  );
+  const allMealsDoneAndSafe =
+    snapshot.survivability.status === "SAFE" &&
+    snapshot.meals.am.state === "DONE" &&
+    snapshot.meals.mid.state === "DONE" &&
+    snapshot.meals.pm.state === "DONE";
+  const isLitterActionFocus =
+    snapshot.litter.state === "DUE_NOW" || snapshot.litter.state === "OVERDUE";
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)] pb-24">
@@ -1010,67 +1026,69 @@ export function CareQuestBoard({
           </div>
         ) : null}
 
-        {/* CHUNK 1: Status Header + Survivability Crest */}
+        {/* CHUNK 1: Status Header + Polaroid Survivability Crest */}
         <section
           aria-label="Maki Survivability Status"
           data-testid="survivability-crest"
-          className={`rounded-[16px] border p-4 sm:p-5 ${survivabilityStyle.wrap}`}
+          className="rounded-[20px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5"
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="relative shrink-0">
-                <Image
-                  src="/maki/maki-portrait.jpg"
-                  width={128}
-                  height={128}
-                  sizes="(min-width: 640px) 64px, 56px"
-                  preload={true}
-                  className="h-14 w-14 sm:h-16 sm:w-16 rounded-[16px] object-cover object-[50%_32%]"
-                  alt="Maki the orange tabby cat looking up"
-                />
-                <span
-                  aria-hidden="true"
-                  className="absolute -bottom-1 -right-1 flex h-[22px] w-[22px] items-center justify-center rounded-full border border-[var(--border-hairline)] bg-white shadow-sm"
-                >
-                  {survivabilityStyle.icon}
-                </span>
-              </div>
-              <div className="min-w-0">
-                <h1
-                  className={`font-display text-2xl font-extrabold tracking-[-0.02em] leading-tight ${survivabilityStyle.title}`}
-                >
-                  {snapshot.survivability.headline}
-                </h1>
-                <p className={`mt-1 text-sm font-medium ${survivabilityStyle.sub}`}>
-                  {snapshot.survivability.subtext}
-                </p>
-              </div>
+          <div className="flex items-center gap-4">
+            <div className="relative shrink-0 rounded-[16px] border border-[var(--border-hairline)] bg-white p-1.5 sunlit-polaroid -rotate-1">
+              <Image
+                src={
+                  allMealsDoneAndSafe
+                    ? "/maki/maki-cozy.jpg"
+                    : "/maki/maki-portrait.jpg"
+                }
+                width={160}
+                height={160}
+                sizes="(min-width: 640px) 96px, 80px"
+                preload={true}
+                className="h-20 w-20 sm:h-24 sm:w-24 rounded-[11px] object-cover object-[50%_32%]"
+                alt={
+                  allMealsDoneAndSafe
+                    ? "Maki curled up resting on a dark hoodie"
+                    : "Maki the orange tabby cat looking up"
+                }
+              />
+              <span
+                aria-hidden="true"
+                className="absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-[var(--border-hairline)] bg-white shadow-sm"
+              >
+                {survivabilityStyle.icon}
+              </span>
             </div>
 
-            <span
-              className={`inline-flex shrink-0 items-center rounded-full border px-3 py-1 text-xs font-bold tabular-nums ${survivabilityStyle.badge}`}
-            >
-              {snapshot.survivability.completedCoreCount} of{" "}
-              {snapshot.survivability.totalCoreCount}{" "}
-              {UI_COPY.survivability.coreLabelSuffix}
-            </span>
+            <div className="min-w-0 flex-1">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold tabular-nums ${survivabilityStyle.wrap} ${survivabilityStyle.title}`}
+              >
+                {survivabilityStyle.icon}
+                <span>
+                  {snapshot.survivability.completedCoreCount} of{" "}
+                  {snapshot.survivability.totalCoreCount}{" "}
+                  {UI_COPY.survivability.coreLabelSuffix}
+                </span>
+              </span>
+              <h1
+                className={`mt-2 font-display text-2xl font-extrabold tracking-[-0.02em] leading-tight ${survivabilityStyle.title}`}
+              >
+                {snapshot.survivability.headline}
+              </h1>
+              <p className={`mt-1 text-sm font-medium ${survivabilityStyle.sub}`}>
+                {snapshot.survivability.subtext}
+              </p>
+            </div>
           </div>
 
-          {snapshot.survivability.status === "SAFE" &&
-          snapshot.meals.am.state === "DONE" &&
-          snapshot.meals.mid.state === "DONE" &&
-          snapshot.meals.pm.state === "DONE" ? (
+          {allMealsDoneAndSafe ? (
             <div
               data-testid="all-meals-done-strip"
-              className="mt-4 flex items-center gap-3 rounded-[12px] border border-[var(--sage-border)] bg-white/80 p-2.5"
+              className="mt-4 flex items-center gap-3 rounded-[12px] border border-[var(--sage-border)] bg-[var(--sage-bg)]/80 px-3.5 py-2.5"
             >
-              <Image
-                src="/maki/maki-cozy.jpg"
-                width={96}
-                height={96}
-                sizes="48px"
-                className="h-12 w-12 rounded-[12px] object-cover object-center shrink-0"
-                alt="Maki curled up resting on a dark hoodie"
+              <CheckCircle2
+                className="h-4 w-4 shrink-0 text-[var(--sage-text)]"
+                aria-hidden="true"
               />
               <p className="text-sm font-semibold text-[var(--sage-strong)]">
                 All 3 meals are done. Maki is resting easy tonight.
@@ -1087,7 +1105,13 @@ export function CareQuestBoard({
 
           <article
             data-testid="litter-quest-card"
-            className={`rounded-[16px] border ${litterTone.border} bg-[var(--bg-card)] p-4 sm:p-5`}
+            className={`rounded-[16px] bg-[var(--bg-card)] ${
+              isLitterActionFocus
+                ? snapshot.litter.state === "OVERDUE"
+                  ? "border-2 border-[var(--coral-accent)] sunlit-hero-card p-4 sm:p-5"
+                  : "border-2 border-[var(--brand-coat)] sunlit-hero-card p-4 sm:p-5"
+                : `border ${litterTone.border} sunlit-card p-3.5 sm:p-4`
+            }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -1139,7 +1163,7 @@ export function CareQuestBoard({
                 onClick={() => void handleCleanLitter()}
                 disabled={Boolean(inFlightAction)}
                 data-testid="litter-clean-cta"
-                className={`inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] px-4 font-display text-base font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                className={`inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] px-4 font-display text-base font-bold kitchen-transition sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                   snapshot.litter.state === "OVERDUE"
                     ? "bg-[var(--coral-text)] text-white hover:bg-[var(--coral-strong)] focus-visible:ring-[var(--coral-text)]"
                     : snapshot.litter.state === "DUE_NOW"
@@ -1258,7 +1282,7 @@ export function CareQuestBoard({
 
           <article
             data-testid="weekly-play-card"
-            className="rounded-[16px] border border-[var(--indigo-border)] bg-[var(--indigo-bg)] p-4 sm:p-5"
+            className="rounded-[16px] border border-[var(--indigo-border)] bg-[var(--indigo-bg)] sunlit-card p-4 sm:p-5"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -1294,17 +1318,32 @@ export function CareQuestBoard({
             </div>
 
             <div
-              className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-white border border-[var(--indigo-border)]"
+              className="mt-3 grid grid-cols-3 gap-2"
               role="progressbar"
               aria-label={UI_COPY.play.title}
               aria-valuemin={0}
               aria-valuemax={snapshot.weeklyPlay.target}
               aria-valuenow={snapshot.weeklyPlay.count}
             >
-              <div
-                className="h-full rounded-full bg-[var(--indigo-accent)] kitchen-transition"
-                style={{ width: `${clampedPlayPercent}%` }}
-              />
+              {Array.from({ length: snapshot.weeklyPlay.target }, (_, index) => {
+                const stampNumber = index + 1;
+                const isStamped = snapshot.weeklyPlay.count >= stampNumber;
+                return (
+                  <div
+                    key={stampNumber}
+                    className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-[12px] border text-xs font-bold tabular-nums kitchen-transition ${
+                      isStamped
+                        ? snapshot.weeklyPlay.isGoalMet
+                          ? "border-[var(--sage-border)] bg-[var(--sage-text)] text-white shadow-xs"
+                          : "border-[var(--indigo-text)] bg-[var(--indigo-text)] text-white shadow-xs"
+                        : "border-[var(--indigo-border)] bg-white/85 text-[var(--indigo-strong)]"
+                    }`}
+                  >
+                    <Footprints className="h-3.5 w-3.5" aria-hidden="true" />
+                    <span>#{stampNumber}</span>
+                  </div>
+                );
+              })}
             </div>
 
             <p className="mt-3 text-sm text-[var(--ink-primary)] leading-relaxed">
@@ -1339,7 +1378,7 @@ export function CareQuestBoard({
                 onClick={() => void handleLogPlay()}
                 disabled={Boolean(inFlightAction)}
                 data-testid="play-log-cta"
-                className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--indigo-text)] px-4 font-display text-base font-bold text-white hover:bg-[var(--indigo-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)] focus-visible:ring-offset-2 disabled:opacity-65 kitchen-transition"
+                className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--indigo-text)] px-4 font-display text-base font-bold text-white hover:bg-[var(--indigo-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)] focus-visible:ring-offset-2 disabled:opacity-65 kitchen-transition sunlit-press"
               >
                 {inFlightAction === "play:log" ? (
                   <>

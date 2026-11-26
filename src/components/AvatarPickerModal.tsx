@@ -35,16 +35,18 @@ export function AvatarPickerModal({
       aria-labelledby="avatar-picker-title"
       data-testid="avatar-picker-modal"
     >
-      <div className="w-full max-w-md rounded-[24px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-5 sm:p-6">
+      <div className="w-full max-w-md rounded-[24px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-5 sm:p-6">
         <div className="flex items-center gap-3.5">
-          <Image
-            src="/maki/maki-portrait.jpg"
-            alt=""
-            aria-hidden="true"
-            width={104}
-            height={104}
-            className="h-13 w-13 shrink-0 rounded-full object-cover object-[50%_32%] ring-2 ring-[var(--brand-border)]"
-          />
+          <div className="shrink-0 rounded-[14px] border border-[var(--border-hairline)] bg-white p-1 sunlit-polaroid -rotate-1">
+            <Image
+              src="/maki/maki-portrait.jpg"
+              alt=""
+              aria-hidden="true"
+              width={104}
+              height={104}
+              className="h-14 w-14 rounded-[10px] object-cover object-[50%_32%]"
+            />
+          </div>
           <div>
             <h2
               id="avatar-picker-title"

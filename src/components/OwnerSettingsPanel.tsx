@@ -491,7 +491,7 @@ export function OwnerSettingsPanel({
       {/* Schedule & Alert Email */}
       <form
         onSubmit={(e) => void handleSaveSchedule(e)}
-        className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4 sm:p-5 space-y-4"
+        className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5 space-y-4"
       >
         <h2 className="font-display text-lg font-bold text-[var(--ink-primary)]">
           Meal Times and Goals
@@ -608,7 +608,7 @@ export function OwnerSettingsPanel({
           type="submit"
           disabled={Boolean(savingSection)}
           data-testid="save-schedule-cta"
-          className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--brand-primary)] px-4 font-display text-base font-bold text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] focus-visible:ring-offset-2 disabled:opacity-65"
+          className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--brand-primary)] px-4 font-display text-base font-bold text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] focus-visible:ring-offset-2 disabled:opacity-65"
         >
           {savingSection === "schedule" ? (
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
@@ -620,7 +620,7 @@ export function OwnerSettingsPanel({
       {/* Household People & Personal Links */}
       <section
         aria-label={UI_COPY.ownerSettings.peopleTitle}
-        className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4 sm:p-5 space-y-4"
+        className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5 space-y-4"
       >
         <div>
           <h2 className="font-display text-lg font-bold text-[var(--ink-primary)]">

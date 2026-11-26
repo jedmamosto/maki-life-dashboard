@@ -77,7 +77,7 @@ export function OwnerPinGate({ token, onUnlocked }: OwnerPinGateProps) {
     <section
       aria-labelledby="owner-pin-heading"
       data-testid="owner-pin-gate"
-      className="mx-auto max-w-sm rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-5 sm:p-6"
+      className="mx-auto max-w-sm rounded-[20px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-5 sm:p-6"
     >
       <div className="flex flex-col items-center text-center">
         <div className="relative">
@@ -171,7 +171,7 @@ export function OwnerPinGate({ token, onUnlocked }: OwnerPinGateProps) {
               disabled={submitting}
               onClick={() => handleAppendDigit(digit)}
               data-testid={`pin-key-${digit}`}
-              className="min-h-[56px] min-w-[56px] rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] font-display text-xl font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)] tabular-nums"
+              className="min-h-[56px] min-w-[56px] rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] font-display text-xl font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)] tabular-nums"
             >
               {digit}
             </button>
@@ -217,7 +217,7 @@ export function OwnerPinGate({ token, onUnlocked }: OwnerPinGateProps) {
           type="submit"
           disabled={submitting}
           data-testid="owner-pin-submit"
-          className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--brand-primary)] px-4 font-display text-base font-bold text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] focus-visible:ring-offset-2 disabled:opacity-65 kitchen-transition"
+          className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--brand-primary)] px-4 font-display text-base font-bold text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] focus-visible:ring-offset-2 disabled:opacity-65 kitchen-transition sunlit-press"
         >
           {submitting ? (
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />

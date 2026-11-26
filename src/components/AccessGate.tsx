@@ -15,15 +15,15 @@ export function AccessGate({ canRetry = true }: AccessGateProps) {
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)] px-4 py-12 flex items-center justify-center safe-top safe-bottom">
-      <main className="w-full max-w-md rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-6 sm:p-8 text-center">
-        <div className="relative mx-auto mb-5 w-fit">
+      <main className="w-full max-w-md rounded-[20px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-6 sm:p-8 text-center">
+        <div className="relative mx-auto mb-5 w-fit rounded-[18px] border border-[var(--border-hairline)] bg-white p-1.5 sunlit-polaroid -rotate-1">
           <Image
             src="/maki/maki-suitcase.jpg"
             alt="Maki sitting inside an open purple suitcase"
             width={208}
             height={208}
             preload={true}
-            className="h-24 w-24 rounded-[20px] border-2 border-[var(--brand-border)] object-cover object-[50%_35%]"
+            className="h-24 w-24 rounded-[12px] object-cover object-[50%_35%]"
           />
           <span
             aria-hidden="true"

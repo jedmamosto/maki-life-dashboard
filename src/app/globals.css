@@ -1,14 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  /* Maki Orange Tabby Warm Surfaces & Hairlines */
-  --bg-canvas: #FCF8F2;
+  /* Maki Sunlit Kitchen Warm Linen Surfaces & Hairlines */
+  --bg-canvas: #FAF4EA;
   --bg-card: #FFFDF9;
   --bg-elevated: #FFFFFF;
-  --bg-subtle: #F4ECE1;
+  --bg-subtle: #F3EAD9;
+  --bg-track: #EFE5D8;
   --bg-scrim: rgb(36 25 20 / 0.52);
-  --border-hairline: #E6DBD0;
+  --border-hairline: #E3D6C7;
   --border-control: #8A7365;
+
+  /* Warm Espresso-Tinted Elevation */
+  --shadow-card: 0 2px 10px -2px rgb(36 25 20 / 0.06), 0 1px 2px rgb(36 25 20 / 0.04);
+  --shadow-hero: 0 10px 26px -8px rgb(179 72 15 / 0.16), 0 2px 6px -1px rgb(36 25 20 / 0.06);
+  --shadow-polaroid: 0 6px 16px -4px rgb(36 25 20 / 0.12), 0 1px 3px rgb(36 25 20 / 0.06);
+  --shadow-pill: 0 1px 3px rgb(36 25 20 / 0.08);
 
   /* Typography & Ink Hierarchy (WCAG 2.2 AA >= 4.5:1 on canvas/card) */
   --ink-primary: #241914;
@@ -91,8 +98,8 @@
   --color-ink-primary: var(--ink-primary);
   --color-ink-secondary: var(--ink-secondary);
   --color-ink-tertiary: var(--ink-tertiary);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: var(--font-plus-jakarta), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, "Iowan Old Style", serif;
 }
 
 html {
@@ -135,6 +142,22 @@ body {
 .kitchen-transition:focus-visible,
 .kitchen-transition[data-open="true"] {
   transition-duration: var(--duration-enter);
+}
+
+.sunlit-card {
+  box-shadow: var(--shadow-card);
+}
+
+.sunlit-hero-card {
+  box-shadow: var(--shadow-hero);
+}
+
+.sunlit-polaroid {
+  box-shadow: var(--shadow-polaroid);
+}
+
+.sunlit-press:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 @media (prefers-reduced-motion: reduce) {
