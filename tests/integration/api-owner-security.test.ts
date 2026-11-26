@@ -219,7 +219,7 @@ describe("API integration: household proxy, PIN lockout, owner settings, test re
       expect(historyRes.status).toBe(200);
       const history = await historyRes.json();
       expect(history.days).toHaveLength(14);
-      expect(history.onTimePercent).toBeGreaterThan(0);
+      expect(history.mealGoalHitPercent).toBeGreaterThan(0);
     } finally {
       process.env.ENABLE_TEST_HARNESS = prevFlag;
       (process.env as Record<string, string | undefined>).NODE_ENV = prevNodeEnv;

@@ -5,7 +5,7 @@ import { getCareRepository } from "@/db";
 import { MemoryCareRepository } from "@/db/file-repository";
 import { resetPinRateLimiter } from "@/lib/auth";
 import { getEffectiveNow, setMockNowIso } from "@/lib/dashboard-service";
-import { makeSlotKey } from "@/lib/domain";
+import { makeMealLogSlotKey } from "@/lib/domain";
 import {
   addManilaDays,
   getManilaDateKey,
@@ -71,47 +71,24 @@ export async function POST(request: Request): Promise<NextResponse> {
     const daysCount = data.days ?? 7;
     const todayKey = getManilaDateKey(now);
 
+    const mealHours = [10, 14, 19, 21];
+    const targetMeals = Math.max(1, settings.dailyMealGoal);
+
     for (let offset = daysCount; offset >= 1; offset -= 1) {
       const dateKey = addManilaDays(todayKey, -offset);
-      const amDue = getSlotScheduledAt(
-        dateKey,
-        settings.amMealHour,
-        settings.amMealMinute,
-      );
-      const midDue = getSlotScheduledAt(
-        dateKey,
-        settings.midMealHour,
-        settings.midMealMinute,
-      );
-      const pmDue = getSlotScheduledAt(
-        dateKey,
-        settings.pmMealHour,
-        settings.pmMealMinute,
-      );
-      await repo.logFeedingAtomic({
-        slotKey: makeSlotKey(dateKey, "AM"),
-        serviceDate: dateKey,
-        period: "AM",
-        dueAtIso: amDue.toISOString(),
-        completedById: "ate",
-        completedAtIso: new Date(amDue.getTime() + 5 * 60_000).toISOString(),
-      });
-      await repo.logFeedingAtomic({
-        slotKey: makeSlotKey(dateKey, "MID"),
-        serviceDate: dateKey,
-        period: "MID",
-        dueAtIso: midDue.toISOString(),
-        completedById: "ate",
-        completedAtIso: new Date(midDue.getTime() + 5 * 60_000).toISOString(),
-      });
-      await repo.logFeedingAtomic({
-        slotKey: makeSlotKey(dateKey, "PM"),
-        serviceDate: dateKey,
-        period: "PM",
-        dueAtIso: pmDue.toISOString(),
-        completedById: offset % 2 === 0 ? "mom" : "ate",
-        completedAtIso: new Date(pmDue.getTime() + 10 * 60_000).toISOString(),
-      });
+      for (let m = 0; m < targetMeals; m += 1) {
+        const hour = mealHours[m % mealHours.length];
+        const mealAt = getSlotScheduledAt(dateKey, hour, 5 + m * 3);
+        const mealIso = mealAt.toISOString();
+        await repo.logFeedingAtomic({
+          slotKey: makeMealLogSlotKey(dateKey, `seed-${offset}-${m}`),
+          serviceDate: dateKey,
+          period: "COUNT",
+          dueAtIso: mealIso,
+          completedById: m === targetMeals - 1 && offset % 2 === 0 ? "mom" : "ate",
+          completedAtIso: mealIso,
+        });
+      }
       if (offset % 2 === 1) {
         const cleanAt = getSlotScheduledAt(dateKey, 15, 0);
         await repo.logCareEvent({

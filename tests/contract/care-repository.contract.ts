@@ -22,10 +22,10 @@ export function runCareRepositoryContractSuite(
 
       const settings = await repo.getSettings();
       expect(settings.householdTimezone).toBe("Asia/Manila");
-      expect(settings.amMealHour).toBe(10);
-      expect(settings.midMealHour).toBe(14);
-      expect(settings.midMealMinute).toBe(0);
-      expect(settings.pmMealHour).toBe(19);
+      expect(settings.dailyMealGoal).toBe(3);
+      expect(settings.mealReminderHour).toBe(20);
+      expect(settings.mealReminderMinute).toBe(0);
+      expect(settings.lastCronTickAtIso).toBeNull();
       expect(settings.litterIntervalHours).toBe(48);
       expect(settings.weeklyPlayGoal).toBe(3);
 
@@ -34,24 +34,24 @@ export function runCareRepositoryContractSuite(
       expect(supplies.every((s) => s.level === "FULL" && s.lastAlertedLevel === null)).toBe(true);
     });
 
-    it("[AC-034] enforces atomic partial uniqueness on feeding_logs and supports Undo -> Re-feed", async () => {
+    it("[AC-034] enforces atomic idempotency on feeding_logs, supports multiple count logs per day, Undo -> Re-feed, and attribution update", async () => {
       const repo = await createRepo();
-      const slotKey = "2026-11-20:AM";
-      const dueAtIso = "2026-11-20T02:00:00.000Z";
+      const slotKey1 = "2026-11-20:LOG:idem-1";
+      const dueAtIso = "2026-11-20T02:05:00.000Z";
 
       const [first, second] = await Promise.all([
         repo.logFeedingAtomic({
-          slotKey,
+          slotKey: slotKey1,
           serviceDate: "2026-11-20",
-          period: "AM",
+          period: "COUNT",
           dueAtIso,
           completedById: "ate",
           completedAtIso: "2026-11-20T02:05:00.000Z",
         }),
         repo.logFeedingAtomic({
-          slotKey,
+          slotKey: slotKey1,
           serviceDate: "2026-11-20",
-          period: "AM",
+          period: "COUNT",
           dueAtIso,
           completedById: "mom",
           completedAtIso: "2026-11-20T02:05:01.000Z",
@@ -64,17 +64,35 @@ export function runCareRepositoryContractSuite(
       expect(losers).toHaveLength(1);
       expect(losers[0].record.id).toBe(winners[0].record.id);
 
-      const undone = await repo.undoFeedingBySlot(
-        slotKey,
+      const extraFeed = await repo.logFeedingAtomic({
+        slotKey: "2026-11-20:LOG:idem-2",
+        serviceDate: "2026-11-20",
+        period: "COUNT",
+        dueAtIso: "2026-11-20T06:00:00.000Z",
+        completedById: "mom",
+        completedAtIso: "2026-11-20T06:00:00.000Z",
+      });
+      expect(extraFeed.alreadyFed).toBe(false);
+      expect(await repo.listActiveFeedingsByDate("2026-11-20")).toHaveLength(2);
+
+      const updatedAttr = await repo.updateFeedingAttributionById(
+        extraFeed.record.id,
+        "dad",
+      );
+      expect(updatedAttr?.completedById).toBe("dad");
+
+      const undone = await repo.undoFeedingById(
+        winners[0].record.id,
         "2026-11-20T02:06:00.000Z",
       );
       expect(undone?.undoneAtIso).toBe("2026-11-20T02:06:00.000Z");
-      expect(await repo.getActiveFeedingBySlot(slotKey)).toBeNull();
+      expect(await repo.getFeedingById(winners[0].record.id)).toBeNull();
+      expect(await repo.listActiveFeedingsByDate("2026-11-20")).toHaveLength(1);
 
       const refed = await repo.logFeedingAtomic({
-        slotKey,
+        slotKey: slotKey1,
         serviceDate: "2026-11-20",
-        period: "AM",
+        period: "COUNT",
         dueAtIso,
         completedById: "dad",
         completedAtIso: "2026-11-20T02:07:00.000Z",

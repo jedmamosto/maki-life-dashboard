@@ -36,15 +36,19 @@ test.describe("Care Workflows, Cross-Context Sync, Timezone Boundaries, Debounce
       const trapB = attachTelemetryTrap(pageB);
 
       // 1. Verify Manila date May 11 on Context A vs EDT May 10 on Context B at 2026-05-10T16:30:00.000Z
+      // Also verify Meals Today card is ready anytime (no early-feed lockout)
       await pageA.goto(`/h/${HOUSEHOLD_TOKEN}?who=ate`);
       await waitForHouseholdCookie(pageA);
       await expect(pageA.getByText(/Mon, May 11/)).toBeVisible();
       await expect(pageA.getByText(/12:30 AM/)).toBeVisible();
+      const mealsCardA = pageA
+        .getByRole("article")
+        .filter({ has: pageA.getByRole("heading", { name: "Meals Today" }) });
+      await expect(mealsCardA).toBeVisible();
+      await expect(mealsCardA.getByText("0 of 3 today")).toBeVisible();
       await expect(
-        pageA.getByText(
-          "Too early for the 10:00 AM meal. You can log up to 90 minutes before.",
-        ),
-      ).toBeVisible();
+        mealsCardA.getByRole("button", { name: "Mark Fed" }),
+      ).toBeEnabled();
 
       await pageB.goto(`/h/${HOUSEHOLD_TOKEN}/owner`);
       await waitForHouseholdCookie(pageB);
@@ -56,25 +60,13 @@ test.describe("Care Workflows, Cross-Context Sync, Timezone Boundaries, Debounce
       await expect(dualClockRegion.getByText("Sun, May 10 • EDT")).toBeVisible();
       await expect(dualClockRegion.getByText("12:30 PM")).toBeVisible();
 
-      // 2. Advance clock to Manila May 11 10:15 AM (still EDT May 10 10:15 PM) so AM Meal is DUE_NOW
+      // 2. Advance clock to Manila May 11 10:15 AM (still EDT May 10 10:15 PM)
       const feedWindowIso = "2026-05-11T02:15:00.000Z";
       await setServerClock(request, feedWindowIso);
       await pageB.clock.setFixedTime(new Date(feedWindowIso));
 
       await pageA.reload();
       await expect(pageA.getByText(/Mon, May 11 • 10:15 AM/)).toBeVisible();
-
-      // Verify all three daily meal cards render on Care Board
-      await expect(
-        pageA
-          .getByRole("article")
-          .filter({ has: pageA.getByRole("heading", { name: "2:00 PM Meal" }) }),
-      ).toBeVisible();
-      await expect(
-        pageA
-          .getByRole("article")
-          .filter({ has: pageA.getByRole("heading", { name: "7:00 PM Meal" }) }),
-      ).toBeVisible();
 
       // 3. Rapid double-click debounce on Mark Fed (delayed POST /api/meals/feed -> exactly 1 request)
       let feedRequestCount = 0;
@@ -84,10 +76,7 @@ test.describe("Care Workflows, Cross-Context Sync, Timezone Boundaries, Debounce
         await route.continue();
       });
 
-      const amMealCardA = pageA
-        .getByRole("article")
-        .filter({ has: pageA.getByRole("heading", { name: "10:00 AM Meal" }) });
-      const markFedBtn = amMealCardA.getByRole("button", { name: "Mark Fed" });
+      const markFedBtn = mealsCardA.getByRole("button", { name: "Mark Fed" });
       await expect(markFedBtn).toBeEnabled();
 
       const btnBox = await markFedBtn.boundingBox();
@@ -99,39 +88,44 @@ test.describe("Care Workflows, Cross-Context Sync, Timezone Boundaries, Debounce
       );
 
       await expect(
-        amMealCardA.getByText("Fed by Ate at 10:15 AM. Maki is all set."),
+        mealsCardA.getByText("Meal #1: Ate • 10:15 AM"),
       ).toBeVisible();
+      await expect(mealsCardA.getByText("1 of 3 today")).toBeVisible();
       expect(feedRequestCount).toBe(1);
 
       await pageA.unroute("**/api/meals/feed");
 
-      // 4. Context B (?who=jed) reloads Care Board and verifies synced Manila May 11 & Fed by Ate
+      // 4. Context B (?who=jed) reloads Care Board and verifies synced Manila May 11 & Meal #1
       await pageB.goto(`/h/${HOUSEHOLD_TOKEN}?who=jed`);
       await expect(pageB.getByText(/Mon, May 11/)).toBeVisible();
-      const amMealCardB = pageB
+      const mealsCardB = pageB
         .getByRole("article")
-        .filter({ has: pageB.getByRole("heading", { name: "10:00 AM Meal" }) });
+        .filter({ has: pageB.getByRole("heading", { name: "Meals Today" }) });
       await expect(
-        amMealCardB.getByText("Fed by Ate at 10:15 AM. Maki is all set."),
+        mealsCardB.getByText("Meal #1: Ate • 10:15 AM"),
       ).toBeVisible();
 
-      // 5. Undo Meal Log + re-Mark Fed on Context A and verify sync on Context B
-      await amMealCardA
-        .getByRole("button", { name: "Undo Meal Log" })
-        .click();
-      await expect(
-        amMealCardA.getByRole("button", { name: "Mark Fed" }),
-      ).toBeVisible();
+      // 5. Undo Meal + re-Mark Fed + extra meal logging beyond goal (3/3 -> 4/3)
+      await mealsCardA.getByTestId("undo-meal-0").click();
+      await expect(mealsCardA.getByText("0 of 3 today")).toBeVisible();
 
-      await amMealCardA.getByRole("button", { name: "Mark Fed" }).click();
+      await mealsCardA.getByRole("button", { name: "Mark Fed" }).click();
       await expect(
-        amMealCardA.getByText("Fed by Ate at 10:15 AM. Maki is all set."),
+        mealsCardA.getByText("Meal #1: Ate • 10:15 AM"),
       ).toBeVisible();
 
       await pageB.reload();
       await expect(
-        amMealCardB.getByText("Fed by Ate at 10:15 AM. Maki is all set."),
+        mealsCardB.getByText("Meal #1: Ate • 10:15 AM"),
       ).toBeVisible();
+
+      // Log 2nd and 3rd meals to reach Goal Met (3 of 3), then 1 extra meal (4 of 3)
+      await mealsCardA.getByRole("button", { name: "Mark Fed" }).click();
+      await expect(mealsCardA.getByText("2 of 3 today")).toBeVisible();
+      await mealsCardA.getByRole("button", { name: "Mark Fed" }).click();
+      await expect(mealsCardA.getByText("Goal Met (3 of 3)")).toBeVisible();
+      await mealsCardA.getByRole("button", { name: "Log Extra Meal" }).click();
+      await expect(mealsCardA.getByText("Goal Met (4 of 3)")).toBeVisible();
 
       // 6. Clean Litter so core tasks are all safe, then log Additive Weekly Play 0/3 -> 4/3
       await pageA

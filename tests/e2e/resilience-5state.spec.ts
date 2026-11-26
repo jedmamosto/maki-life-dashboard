@@ -53,10 +53,10 @@ test.describe("5-State Resilience Matrix and Viewport Geometry Audit", () => {
     });
 
     trap.expectHttpConsoleError(500);
-    const amMealCard = page
+    const mealsCard = page
       .getByRole("article")
-      .filter({ has: page.getByRole("heading", { name: "10:00 AM Meal" }) });
-    await amMealCard.getByRole("button", { name: "Mark Fed" }).click();
+      .filter({ has: page.getByRole("heading", { name: "Meals Today" }) });
+    await mealsCard.getByRole("button", { name: "Mark Fed" }).click();
 
     const alertBanner = page
       .getByRole("alert")
@@ -68,13 +68,11 @@ test.describe("5-State Resilience Matrix and Viewport Geometry Audit", () => {
     await tryAgainBtn.click();
 
     await expect(alertBanner).toBeHidden();
-    await expect(
-      amMealCard.getByText("Fed by Ate at 10:15 AM. Maki is all set."),
-    ).toBeVisible();
+    await expect(mealsCard.getByText("Meal #1: Ate • 10:15 AM")).toBeVisible();
     expect(feedAttempts).toBe(2);
     await page.unroute("**/api/meals/feed");
 
-    // 3. PARTIAL STATE: AM Meal Done + Midday/PM Meals Upcoming + Litter Due Now -> 3 of 6 Core
+    // 3. PARTIAL STATE: 1 of 3 meals + Litter Due Now -> 3 of 6 Core
     const crest = page.getByRole("region", {
       name: "Maki Survivability Status",
     });
@@ -150,7 +148,7 @@ test.describe("5-State Resilience Matrix and Viewport Geometry Audit", () => {
         await assertTouchTargets(page, [
           page
             .getByRole("article")
-            .filter({ has: page.getByRole("heading", { name: "10:00 AM Meal" }) })
+            .filter({ has: page.getByRole("heading", { name: "Meals Today" }) })
             .getByRole("button", { name: "Mark Fed" }),
           page.getByRole("button", { name: "Mark Litter Cleaned" }),
           page.getByRole("button", { name: "Log Play Time" }),

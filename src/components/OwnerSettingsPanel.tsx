@@ -130,14 +130,11 @@ export function OwnerSettingsPanel({
 }: OwnerSettingsPanelProps) {
   const router = useRouter();
   const [snapshot, setSnapshot] = useState<DashboardSnapshot>(initialSnapshot);
-  const [amMealTime, setAmMealTime] = useState(
-    initialSnapshot.settings.amMealTime
+  const [dailyMealGoal, setDailyMealGoal] = useState(
+    String(initialSnapshot.settings.dailyMealGoal)
   );
-  const [midMealTime, setMidMealTime] = useState(
-    initialSnapshot.settings.midMealTime
-  );
-  const [pmMealTime, setPmMealTime] = useState(
-    initialSnapshot.settings.pmMealTime
+  const [mealReminderTime, setMealReminderTime] = useState(
+    initialSnapshot.settings.mealReminderTime
   );
   const [litterIntervalHours, setLitterIntervalHours] = useState(
     String(initialSnapshot.settings.litterIntervalHours)
@@ -167,9 +164,8 @@ export function OwnerSettingsPanel({
 
   const syncFromSnapshot = (next: DashboardSnapshot) => {
     setSnapshot(next);
-    setAmMealTime(next.settings.amMealTime);
-    setMidMealTime(next.settings.midMealTime);
-    setPmMealTime(next.settings.pmMealTime);
+    setDailyMealGoal(String(next.settings.dailyMealGoal));
+    setMealReminderTime(next.settings.mealReminderTime);
     setLitterIntervalHours(String(next.settings.litterIntervalHours));
     setWeeklyPlayGoal(String(next.settings.weeklyPlayGoal));
     setOwnerEmail(next.settings.ownerEmail);
@@ -202,9 +198,8 @@ export function OwnerSettingsPanel({
         {
           method: "PATCH",
           body: JSON.stringify({
-            amMealTime,
-            midMealTime,
-            pmMealTime,
+            dailyMealGoal: Number(dailyMealGoal),
+            mealReminderTime,
             litterIntervalHours: Number(litterIntervalHours),
             weeklyPlayGoal: Number(weeklyPlayGoal),
             ownerEmail: ownerEmail.trim(),
@@ -500,51 +495,36 @@ export function OwnerSettingsPanel({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label
-              htmlFor="am-meal-time"
+              htmlFor="daily-meal-goal"
               className="block text-sm font-semibold text-[var(--ink-primary)]"
             >
-              AM Meal Time
+              Daily Meal Goal
             </label>
             <input
-              id="am-meal-time"
-              type="time"
+              id="daily-meal-goal"
+              type="number"
+              min={1}
+              max={10}
               required
-              value={amMealTime}
-              onChange={(e) => setAmMealTime(e.target.value)}
+              value={dailyMealGoal}
+              onChange={(e) => setDailyMealGoal(e.target.value)}
               className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
             />
           </div>
 
           <div>
             <label
-              htmlFor="mid-meal-time"
+              htmlFor="meal-reminder-time"
               className="block text-sm font-semibold text-[var(--ink-primary)]"
             >
-              Midday Meal Time
+              Daily Meal Check-in Time
             </label>
             <input
-              id="mid-meal-time"
+              id="meal-reminder-time"
               type="time"
               required
-              value={midMealTime}
-              onChange={(e) => setMidMealTime(e.target.value)}
-              className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="pm-meal-time"
-              className="block text-sm font-semibold text-[var(--ink-primary)]"
-            >
-              PM Meal Time
-            </label>
-            <input
-              id="pm-meal-time"
-              type="time"
-              required
-              value={pmMealTime}
-              onChange={(e) => setPmMealTime(e.target.value)}
+              value={mealReminderTime}
+              onChange={(e) => setMealReminderTime(e.target.value)}
               className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
             />
           </div>

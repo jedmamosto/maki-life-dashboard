@@ -6,12 +6,12 @@ import {
   getDashboardSnapshot,
   getEffectiveNow,
 } from "@/lib/dashboard-service";
-import { parseSlotKey, resolveCaregiver } from "@/lib/domain";
+import { resolveCaregiver } from "@/lib/domain";
 import { parseJsonBody, problemResponse, requireHouseholdAuth } from "@/app/api/_shared";
 
 const AttributionSchema = z
   .object({
-    slotKey: z.string().min(1),
+    logId: z.string().min(1),
     caregiverId: z.string().min(1).optional(),
     actorId: z.string().min(1).optional(),
   })
@@ -30,11 +30,6 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     return parsed.response;
   }
 
-  const slot = parseSlotKey(parsed.data.slotKey);
-  if (!slot) {
-    return problemResponse(400, "Invalid Slot Key", "Invalid meal slot key.");
-  }
-
   const repo = getCareRepository();
   const actorKey = parsed.data.caregiverId ?? parsed.data.actorId ?? "";
   const caregiver = await resolveCaregiver(repo, actorKey);
@@ -46,15 +41,15 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     );
   }
 
-  const updated = await repo.updateFeedingAttribution(
-    parsed.data.slotKey,
+  const updated = await repo.updateFeedingAttributionById(
+    parsed.data.logId,
     caregiver.id,
   );
   if (!updated) {
     return problemResponse(
       404,
       "Not Found",
-      "No active meal log found for this slot.",
+      "No active meal log found for this entry.",
     );
   }
 

@@ -57,18 +57,14 @@ const ESCALATION_STEPS: Array<{
   timeTag: string;
   label: string;
 }> = [
-  { stage: "T0_HELPER", timeTag: "T+0m", label: "Helper Alert" },
-  { stage: "T20_HELPER", timeTag: "T+20m", label: "Helper Check" },
-  { stage: "T45_FAMILY_OWNER", timeTag: "T+45m", label: "Family + Owner" },
-  { stage: "T120_OWNER", timeTag: "T+120m", label: "Owner Urgent" },
+  { stage: "REMINDER_SENT", timeTag: "Check-in", label: "Helper + Owner" },
+  { stage: "OWNER_ESCALATED", timeTag: "+60m", label: "Owner Urgent" },
 ];
 
 const STAGE_ORDER: Record<EscalationStage, number> = {
   NONE: 0,
-  T0_HELPER: 1,
-  T20_HELPER: 2,
-  T45_FAMILY_OWNER: 3,
-  T120_OWNER: 4,
+  REMINDER_SENT: 1,
+  OWNER_ESCALATED: 2,
 };
 
 function formatManilaClockAt(date: Date): {
@@ -128,9 +124,7 @@ function formatPlatformLabel(platform: PushPlatform | null): string {
 
 function renderMatrixBadge(
   status:
-    | DayComplianceCell["amStatus"]
-    | DayComplianceCell["midStatus"]
-    | DayComplianceCell["pmStatus"]
+    | DayComplianceCell["mealStatus"]
     | DayComplianceCell["litterStatus"]
 ) {
   switch (status) {
@@ -139,13 +133,14 @@ function renderMatrixBadge(
       return {
         cls: "border-[var(--sage-border)] bg-[var(--sage-bg)] text-[var(--sage-strong)]",
         icon: <Check className="h-3.5 w-3.5" aria-hidden="true" />,
-        label: status === "DONE" ? "Done" : "On time",
+        label: status === "DONE" ? "Done" : "Goal Met",
       };
+    case "PARTIAL":
     case "LATE":
       return {
         cls: "border-[var(--amber-border)] bg-[var(--amber-bg)] text-[var(--amber-strong)]",
         icon: <Clock className="h-3.5 w-3.5" aria-hidden="true" />,
-        label: "Late",
+        label: status === "PARTIAL" ? "Partial" : "Late",
       };
     case "MISSED":
       return {
@@ -518,11 +513,11 @@ export function OwnerDashboardView({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {ESCALATION_STEPS.map((step, index) => {
                 const stepNumber = index + 1;
                 const isReached = activeStageNum >= stepNumber;
-                const isUrgent = isReached && stepNumber >= 3;
+                const isUrgent = isReached && stepNumber >= 2;
                 return (
                   <div
                     key={step.stage}
@@ -690,7 +685,7 @@ export function OwnerDashboardView({
                 {UI_COPY.ownerView.historyTitle}
               </h2>
               <div className="mt-1 flex flex-wrap gap-3 text-xs font-semibold text-[var(--ink-secondary)] tabular-nums">
-                <span>On-time meals: {history.onTimePercent}%</span>
+                <span>Meal goal met: {history.mealGoalHitPercent}%</span>
                 <span>Core streak: {history.coreStreakDays} days</span>
               </div>
             </div>
@@ -765,9 +760,7 @@ export function OwnerDashboardView({
               <tbody>
                 {(
                   [
-                    { key: "am", label: "AM", desktopLabel: "AM Meal" },
-                    { key: "mid", label: "MID", desktopLabel: "Midday Meal" },
-                    { key: "pm", label: "PM", desktopLabel: "PM Meal" },
+                    { key: "meals", label: "Meals", desktopLabel: "Meals" },
                     { key: "litter", label: "Litter", desktopLabel: "Litter" },
                     { key: "play", label: "Play", desktopLabel: "Play" },
                   ] as const
@@ -782,6 +775,23 @@ export function OwnerDashboardView({
                     </th>
                     {history.days.map((day, idx) => {
                       const colClass = getColumnDisplayClass(idx);
+                      if (row.key === "meals") {
+                        const badge = renderMatrixBadge(day.mealStatus);
+                        return (
+                          <td key={day.dateKey} className={`p-0.5 ${colClass}`}>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDateKey(day.dateKey)}
+                              data-testid={`history-cell-${day.dateKey}-meals`}
+                              aria-label={`${day.shortLabel} Meals: ${day.mealCount} of ${day.mealGoal} (${badge.label})`}
+                              className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-[8px] border text-[11px] font-bold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${badge.cls}`}
+                            >
+                              {day.mealCount}/{day.mealGoal}
+                            </button>
+                          </td>
+                        );
+                      }
+
                       if (row.key === "play") {
                         const hasPlay = day.playCount > 0;
                         return (
@@ -813,22 +823,14 @@ export function OwnerDashboardView({
                         );
                       }
 
-                      const status =
-                        row.key === "am"
-                          ? day.amStatus
-                          : row.key === "mid"
-                            ? day.midStatus
-                            : row.key === "pm"
-                              ? day.pmStatus
-                              : day.litterStatus;
-                      const badge = renderMatrixBadge(status);
+                      const badge = renderMatrixBadge(day.litterStatus);
 
                       return (
                         <td key={day.dateKey} className={`p-0.5 ${colClass}`}>
                           <button
                             type="button"
                             onClick={() => setSelectedDateKey(day.dateKey)}
-                            data-testid={`history-cell-${day.dateKey}-${row.key}`}
+                            data-testid={`history-cell-${day.dateKey}-litter`}
                             aria-label={`${day.shortLabel} ${row.desktopLabel}: ${badge.label}`}
                             className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-[8px] border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${badge.cls}`}
                           >
@@ -852,34 +854,16 @@ export function OwnerDashboardView({
                 {selectedDay.weekdayLabel}, {selectedDay.shortLabel}
               </div>
               <dl className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-[var(--ink-secondary)]">
-                <div>
+                <div className="sm:col-span-2">
                   <dt className="font-bold text-[var(--ink-primary)]">
-                    AM Meal
+                    Meals ({selectedDay.mealCount} of {selectedDay.mealGoal})
                   </dt>
-                  <dd>
-                    {selectedDay.details.amFedBy
-                      ? `${selectedDay.details.amFedBy} at ${selectedDay.details.amFedAt}`
-                      : renderMatrixBadge(selectedDay.amStatus).label}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-[var(--ink-primary)]">
-                    Midday Meal
-                  </dt>
-                  <dd>
-                    {selectedDay.details.midFedBy
-                      ? `${selectedDay.details.midFedBy} at ${selectedDay.details.midFedAt}`
-                      : renderMatrixBadge(selectedDay.midStatus).label}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-[var(--ink-primary)]">
-                    PM Meal
-                  </dt>
-                  <dd>
-                    {selectedDay.details.pmFedBy
-                      ? `${selectedDay.details.pmFedBy} at ${selectedDay.details.pmFedAt}`
-                      : renderMatrixBadge(selectedDay.pmStatus).label}
+                  <dd className="tabular-nums">
+                    {selectedDay.details.meals.length > 0
+                      ? selectedDay.details.meals
+                          .map((m) => `${m.fedAt} (${m.fedBy})`)
+                          .join(" • ")
+                      : renderMatrixBadge(selectedDay.mealStatus).label}
                   </dd>
                 </div>
                 <div>
@@ -922,6 +906,20 @@ export function OwnerDashboardView({
                 Helper Devices: {history.pushHealth.activeHelperDevices} •
                 Family Devices: {history.pushHealth.activeFamilyDevices} •
                 Owner Devices: {history.pushHealth.activeOwnerDevices}
+              </p>
+              <p
+                data-testid="cron-health-status"
+                className="mt-1 text-xs font-semibold text-[var(--ink-secondary)] tabular-nums"
+              >
+                {UI_COPY.ownerView.cronHealthLabel}:{" "}
+                {snapshot.settings.lastCronTickAtIso
+                  ? (() => {
+                      const tickClock = formatManilaClockAt(
+                        new Date(snapshot.settings.lastCronTickAtIso)
+                      );
+                      return `${tickClock.dateLabel}, ${tickClock.timeLabel} (Manila)`;
+                    })()
+                  : "Not run yet"}
               </p>
             </div>
             <Link

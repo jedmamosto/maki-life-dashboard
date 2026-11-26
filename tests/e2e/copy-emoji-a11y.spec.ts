@@ -67,7 +67,7 @@ test.describe("CEFR A2 Copy, Zero Unicode Emojis, and Button/Input Accessibility
     trap.expectHttpConsoleError(500);
     await page
       .getByRole("article")
-      .filter({ has: page.getByRole("heading", { name: "10:00 AM Meal" }) })
+      .filter({ has: page.getByRole("heading", { name: "Meals Today" }) })
       .getByRole("button", { name: "Mark Fed" })
       .click();
     await expect(

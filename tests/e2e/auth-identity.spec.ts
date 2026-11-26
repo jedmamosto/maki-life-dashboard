@@ -31,9 +31,7 @@ test.describe("Auth, HttpOnly Cookie Isolation, Caregiver Identity, and PIN Gate
     for (const leakedText of [
       "Maki is Safe",
       "Maki Needs Care",
-      "10:00 AM Meal",
-      "2:00 PM Meal",
-      "7:00 PM Meal",
+      "Meals Today",
       "Litter Box",
       "Cat Food",
       "Out-of-Room Play",
@@ -48,7 +46,7 @@ test.describe("Auth, HttpOnly Cookie Isolation, Caregiver Identity, and PIN Gate
     await expect(
       page.getByRole("button", { name: "Try Link Again" }),
     ).toBeVisible();
-    await expect(page.getByText("10:00 AM Meal")).toHaveCount(0);
+    await expect(page.getByText("Meals Today")).toHaveCount(0);
     await expect(page.getByText("Cat Food")).toHaveCount(0);
 
     trap.assertClean();
@@ -101,14 +99,12 @@ test.describe("Auth, HttpOnly Cookie Isolation, Caregiver Identity, and PIN Gate
     await page.goto(`/h/${HOUSEHOLD_TOKEN}?who=ate`);
     await waitForHouseholdCookie(page);
 
-    // Log AM Meal
-    const amMealCard = page
+    // Log Meal #1
+    const mealsCard = page
       .getByRole("article")
-      .filter({ has: page.getByRole("heading", { name: "10:00 AM Meal" }) });
-    await amMealCard.getByRole("button", { name: "Mark Fed" }).click();
-    await expect(
-      amMealCard.getByText("Fed by Ate at 10:15 AM. Maki is all set."),
-    ).toBeVisible();
+      .filter({ has: page.getByRole("heading", { name: "Meals Today" }) });
+    await mealsCard.getByRole("button", { name: "Mark Fed" }).click();
+    await expect(mealsCard.getByText("Meal #1: Ate • 10:15 AM")).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Enter Owner 4-Digit PIN" }),
     ).toHaveCount(0);

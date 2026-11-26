@@ -68,40 +68,35 @@ export const UI_COPY = {
     dueTitle: "Maki Needs Care",
     overdueTitle: "Care Is Late",
     coreLabelSuffix: "Core",
-    nextMealPrefix: "Next meal:",
+    mealsProgressPrefix: "Meals today:",
     allSetToday: "Meals and litter are on track today.",
   },
 
   meals: {
-    amTitle: "10:00 AM Meal",
-    midTitle: "2:00 PM Meal",
-    pmTitle: "7:00 PM Meal",
+    title: "Meals Today",
+    goalDoneBadge: "Goal Met",
     states: {
-      UPCOMING: "Upcoming",
-      DUE_NOW: "Due Now",
-      OVERDUE: "Late",
-      DONE: "Done",
+      UPCOMING: "In Progress",
+      DUE_NOW: "Check-in Due",
+      OVERDUE: "Short",
+      DONE: "Goal Met",
     },
-    upcomingBody: (timeLabel: string) =>
-      `Next meal is at ${timeLabel}. No action needed right now.`,
-    dueBody: "It is time to feed Maki. Tap below after filling her bowl.",
-    overdueBody: (minutesLate: number, helperName: string) =>
-      `Not marked yet (${minutesLate} min late). Check Maki's bowl or ask ${helperName} first.`,
-    doneBody: (actorName: string, timeLabel: string) =>
-      `Fed by ${actorName} at ${timeLabel}. Maki is all set.`,
+    emptyBody: (target: number) =>
+      `Tap below each time you feed Maki. Today's goal is ${target} meals.`,
+    progressBody: (count: number, target: number) =>
+      `${count} of ${target} meals logged today. Tap below after the next meal.`,
+    goalMetBody: (target: number) =>
+      `Maki had ${target} meals today. You can still log extra meals below.`,
+    overdueBody: (count: number, target: number, helperName: string) =>
+      `Only ${count} of ${target} meals logged. Check Maki's bowl or ask ${helperName}.`,
     markFedCta: "Mark Fed",
-    markFedEarlyCta: "Mark Fed Early",
-    markFedOverdueCta: "Mark Fed Now",
+    extraMealCta: "Log Extra Meal",
     savingCta: "Saving Meal...",
-    undoCta: "Undo Meal Log",
+    undoCta: "Undo",
     changeNameCta: "Change Name",
-    earlyWindowError: (timeLabel: string) =>
-      `Too early for the ${timeLabel} meal. You can log up to 90 minutes before.`,
     priorDayUndoError: "You can only undo meals from today.",
-    alreadyFedTitle: "Already Fed",
-    alreadyFedBody: (actorName: string, timeLabel: string) =>
-      `${actorName} already fed Maki at ${timeLabel}. No extra food is needed.`,
-    savedToast: (timeLabel: string) => `Saved: Maki fed at ${timeLabel}.`,
+    savedToast: (timeLabel: string, count: number, target: number) =>
+      `Saved: Meal ${count} of ${target} at ${timeLabel}.`,
     foodPiggybackQuestion: "Quick check: How much cat food is left?",
   },
 
@@ -168,7 +163,7 @@ export const UI_COPY = {
     title: "Owner View",
     houseTimeLabel: "House Time (Manila)",
     localTimeLabel: "Your Time (Local)",
-    escalationLabel: "Meal Alert Steps",
+    escalationLabel: "Meal Check-in Steps",
     nudgeCardTitle: "Send a Quick Nudge",
     copyNudgeCta: "Copy Messenger Nudge",
     copiedNudgeCta: "Copied for Messenger",
@@ -178,6 +173,7 @@ export const UI_COPY = {
     last7Label: "Last 7 Days",
     prev7Label: "Previous 7 Days",
     pushHealthTitle: "Phone Alerts Health",
+    cronHealthLabel: "Cron Check",
     alertsOnBadge: "Alerts On",
     alertsOffBadge: "Alerts Off",
     notSetBadge: "Not Installed",
@@ -199,11 +195,11 @@ export const UI_COPY = {
     iosStepC: "Open Maki Care from your Home Screen icon.",
     androidStepA: "Tap the Chrome menu in the top corner.",
     androidStepB: "Tap Install app or Add to Home Screen.",
-    androidStepC: "Set Chrome battery to Unrestricted and add 10 AM, 2 PM, and 7 PM alarms.",
+    androidStepC: "Set Chrome battery to Unrestricted and keep phone alarms for meal times.",
     standaloneReady: "Running from Home Screen icon.",
     standaloneWaiting: "Open from the Home Screen icon to enable alerts.",
     step3Title: "3. Turn On Phone Alerts",
-    step3Body: "Lets this phone ring at 10:00 AM, 2:00 PM, and 7:00 PM.",
+    step3Body: "Lets this phone ring for daily meal check-ins and litter alerts.",
     allowAlertsCta: "Allow Phone Alerts",
     alertsActiveText: "Phone alerts are active on this device.",
     alertsBlockedText:
@@ -249,21 +245,13 @@ export const UI_COPY = {
 } as const;
 
 export const PUSH_TEMPLATES = {
-  mealDueHelper: (timeLabel: string) => ({
-    title: `Maki Meal Time (${timeLabel})`,
-    body: "Feed Maki now, then tap Mark Fed.",
+  mealShortfallCheckIn: (count: number, target: number) => ({
+    title: `Maki Meals Check-in: ${count} of ${target}`,
+    body: "If you fed Maki today, tap Mark Fed so everyone knows.",
   }),
-  mealSelfCheckHelper: (timeLabel: string) => ({
-    title: `Did Maki eat at ${timeLabel}?`,
-    body: "If you fed Maki, tap Mark Fed so everyone knows.",
-  }),
-  mealEscalateFamily: (timeLabel: string, helperName: string) => ({
-    title: `Check Maki's ${timeLabel} Meal`,
-    body: `Not marked fed yet. Check Maki's bowl or ask ${helperName}.`,
-  }),
-  mealEscalateOwner: (timeLabel: string, minutesLate: number) => ({
-    title: `Maki ${timeLabel} Meal Is ${minutesLate}m Late`,
-    body: "Open the Owner View to check status or send a quick Messenger nudge.",
+  mealShortfallOwnerEscalation: (count: number, target: number) => ({
+    title: `Maki Meals Short: ${count} of ${target}`,
+    body: "Open Owner View to check today's log or send a Messenger nudge.",
   }),
   litterDueHelper: () => ({
     title: "Clean Maki's Litter Box",

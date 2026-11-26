@@ -7,23 +7,13 @@ import {
   getDashboardSnapshot,
   getEffectiveNow,
 } from "@/lib/dashboard-service";
-import { makeSlotKey, parseSlotKey } from "@/lib/domain";
-import { rearmMealTiers } from "@/lib/notifications";
+import { rearmMealCheckin } from "@/lib/notifications";
 import { getManilaDateKey } from "@/lib/timezone";
 import { parseJsonBody, problemResponse, requireHouseholdAuth } from "@/app/api/_shared";
 
-const UndoMealSchema = z
-  .object({
-    slotKey: z.string().min(1).optional(),
-    period: z.enum(["AM", "MID", "PM"]).optional(),
-    serviceDate: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .optional(),
-  })
-  .refine((data) => Boolean(data.slotKey || data.period), {
-    message: "Either slotKey or period is required.",
-  });
+const UndoMealSchema = z.object({
+  logId: z.string().min(1),
+});
 
 export async function POST(request: Request): Promise<NextResponse> {
   const unauthorized = await requireHouseholdAuth(request);
@@ -38,24 +28,18 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const now = getEffectiveNow();
   const todayDateKey = getManilaDateKey(now);
+  const repo = getCareRepository();
 
-  let serviceDate = parsed.data.serviceDate ?? todayDateKey;
-  let period = parsed.data.period;
-
-  if (parsed.data.slotKey) {
-    const slot = parseSlotKey(parsed.data.slotKey);
-    if (!slot) {
-      return problemResponse(400, "Invalid Slot Key", "Invalid meal slot key.");
-    }
-    serviceDate = slot.serviceDate;
-    period = slot.period;
+  const existing = await repo.getFeedingById(parsed.data.logId);
+  if (!existing) {
+    return problemResponse(
+      404,
+      "Not Found",
+      "No active meal log found for this entry.",
+    );
   }
 
-  if (!period) {
-    return problemResponse(400, "Invalid Period", "Meal period is required.");
-  }
-
-  if (serviceDate !== todayDateKey) {
+  if (existing.serviceDate !== todayDateKey) {
     return problemResponse(
       422,
       "Prior Day Undo Disallowed",
@@ -63,18 +47,23 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  const repo = getCareRepository();
-  const slotKey = makeSlotKey(serviceDate, period);
-  const undone = await repo.undoFeedingBySlot(slotKey, now.toISOString());
+  const undone = await repo.undoFeedingById(existing.id, now.toISOString());
   if (!undone) {
     return problemResponse(
       404,
       "Not Found",
-      "No active meal log found for this slot.",
+      "No active meal log found for this entry.",
     );
   }
 
-  await rearmMealTiers(repo, slotKey);
+  const [settings, remaining] = await Promise.all([
+    repo.getSettings(),
+    repo.listActiveFeedingsByDate(todayDateKey),
+  ]);
+  if (remaining.length < Math.max(1, settings.dailyMealGoal)) {
+    await rearmMealCheckin(repo, todayDateKey);
+  }
+
   const snapshot = await getDashboardSnapshot(now, getAppBaseUrl(request.url));
 
   return NextResponse.json(

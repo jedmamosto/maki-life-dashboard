@@ -8,43 +8,36 @@ This manual covers daily tasks, common household scenarios, and error recovery i
 
 1. Open your personal `?who=ate` link from your Home Screen icon.
 2. First visit: If `Who is helping Maki today?` appears, tap `Ate`. No password is needed.
-3. Log `10:00 AM Meal`, `2:00 PM Meal`, and `7:00 PM Meal`: Feed Maki first. Then tap `Mark Fed` (or `Mark Fed Now` if late). You see `Saved: Maki fed at [time].` with a 10-second `Undo` bar.
-4. Sunday 7:00 PM food check: After marking Sunday's `7:00 PM Meal` done, answer `Quick check: How much cat food is left?` (`Full`, `Half`, `Low`, or `Empty`).
+3. Log `Meals Today`: Feed Maki first, then tap `Mark Fed` anytime (no early-feed lockout). Each tap logs a timestamped entry (`1 of 3`, `2 of 3`, `3 of 3`) and shows `Saved: Meal [count] of [target] at [time].` with a 10-second `Undo` bar. Extra meals can still be logged via `Log Extra Meal`.
+4. Sunday food check: After reaching the daily meal goal on Sunday, answer `Quick check: How much cat food is left?` (`Full`, `Half`, `Low`, or `Empty`).
 5. Clean `Litter Box` (every 48 hours / 2 days): Clean the box, then tap `Mark Litter Cleaned`. Every 3rd clean asks `Quick check: How much cat litter is left?`.
 6. Update `Supplies` anytime: Tap `Edit` on `Cat Food` or `Cat Litter`, then pick `Full`, `Half`, `Low`, or `Empty`. Marking `Low` or `Empty` sends a push alert to the owner.
 
 ### Family (Mom, Dad, Sibling)
 
-1. Check before feeding: Look for `Fed by [Name] at [time]. Maki is all set.` so Maki does not get fed twice.
-2. Handle `T+45m` backup alerts: After 45 minutes late, Family and Owner phones get `Check Maki's [time] Meal`. Check Maki's bowl or ask `Ate` first, then tap `Mark Fed Now`.
-3. Log optional `Out-of-Room Play`: Take Maki out for 10 minutes, then tap `Log Play Time` (or `Log Extra Play` after 3 sessions). Play is an optional weekly goal and never lowers the `6 Core` Survivability status.
+1. Check before feeding: Look at the timestamped entries inside `Meals Today` (`[Name] • [time]`) so Maki does not get fed twice unintentionally.
+2. Log optional `Out-of-Room Play`: Take Maki out for 10 minutes, then tap `Log Play Time` (or `Log Extra Play` after 3 sessions). Play is an optional weekly goal and never lowers the Survivability core count.
 
 ### Remote Owner (Jed)
 
 1. Open the `Owner` tab (`/h/[token]/owner`).
-2. Check clocks and alerts: Compare `House Time (Manila)` with `Your Time (Local)` and watch `Meal Alert Steps` (`T+0m`, `T+20m`, `T+45m`, `T+120m`).
-3. Read `14-Day Care History`: Check `On-time meals` % and `Core streak` days. On mobile, switch between `Last 7 Days` and `Previous 7 Days`. Tap any date column or cell to see who logged each task.
-4. Check `Phone Alerts Health`: Confirm each device shows `Alerts On`, tap `Send Test Alert`, or tap `Open Phone Setup`.
+2. Check clocks and alerts: Compare `House Time (Manila)` with `Your Time (Local)` and watch `Meal Check-in Steps` (`Quiet / On Track`, `Check-in Sent`, `Owner Urgent`).
+3. Read `14-Day Care History`: Check `Meal goal met` % and `Core streak` days. On mobile, switch between `Last 7 Days` and `Previous 7 Days`. Tap any date column or cell to view each meal timestamp and caregiver.
+4. Check `Phone Alerts Health` & `Cron Check`: Confirm each device shows `Alerts On`, tap `Send Test Alert`, and confirm the last cron tick timestamp is recent.
 5. Send a nudge: Tap `Copy Messenger Nudge`, then paste the message into Messenger.
-6. Change settings: Tap the gear icon (`/h/[token]/settings`) and enter your 4-digit Owner PIN (`Unlock Settings`). Update meal times, litter hours, weekly play goal, `Owner Alert Email`, people, `?who=` links, PIN, or secret home link. Tap `Lock Settings` when done (unlock expires after 2 hours).
+6. Change settings: Tap the gear icon (`/h/[token]/settings`) and enter your 4-digit Owner PIN (`Unlock Settings`). Update `Daily Meal Goal`, `Daily Meal Check-in Time`, litter hours, weekly play goal, `Owner Alert Email`, people, `?who=` links, PIN, or secret home link. Tap `Lock Settings` when done (unlock expires after 2 hours).
 
 ## 2. Common Household Scenarios
 
-### Feeding Early (Up to 90 Minutes Before Meal Time)
+### Feeding Anytime Without Schedule Lockouts
 
-- Within 90 minutes before `10:00 AM` (`8:30 AM`+), `2:00 PM` (`12:30 PM`+), or `7:00 PM` (`5:30 PM`+), the meal button reads `Mark Fed Early`.
-- Tap `Mark Fed Early` after feeding Maki. The server skips all reminder alerts for that meal automatically.
-
-### Two People Tap `Mark Fed` at the Same Time
-
-- Only one active log can exist per meal slot.
-- The second phone shows `Already Fed` (`[Name] already fed Maki at [time]. No extra food is needed.`).
-- Do not feed Maki again. Tap `Refresh Status` to load the latest board.
+- Caregivers can tap `Mark Fed` at any time of day with no early-feed window restriction.
+- Once `count >= dailyMealGoal`, the server automatically skips remaining daily check-in reminders for that day.
 
 ### Accidental Meal Tap or Wrong Name on a Shared Phone
 
-- Accidental tap today: Tap `Undo` on the bottom bar within 10 seconds, or tap `Undo Meal Log` on the meal card. Undoing re-arms reminders for that meal slot.
-- Wrong name on a meal card: Tap `Change Name` on the done meal card and select who fed Maki.
+- Accidental tap today: Tap `Undo` on the bottom bar within 10 seconds, or tap `Undo` next to the specific timestamped entry inside `Meals Today`. Undoing re-arms today's shortfall check-in if the count drops below the daily goal.
+- Wrong name on a meal entry: Tap `Change Name` on that entry and select who fed Maki.
 - Switch person on a shared phone: Tap the person button in the top header (`Switch`), then pick your name before logging tasks.
 
 ## 3. Error and Failure Recovery Guide
