@@ -20,8 +20,8 @@ import {
 } from "lucide-react";
 import type {
   Caregiver,
+  DailyMealsView,
   DashboardSnapshot,
-  FeedingSlotView,
   SupplyKey,
   SupplyLevel,
   SupplyView,
@@ -53,12 +53,7 @@ interface CareQuestBoardProps {
 interface SnackbarState {
   id: number;
   message: string;
-  undoSlotKey?: string;
-}
-
-interface AlreadyFedNotice {
-  actorName: string;
-  timeLabel: string;
+  undoLogId?: string;
 }
 
 const SUPPLY_LEVELS: SupplyLevel[] = ["FULL", "HALF", "LOW", "EMPTY"];
@@ -182,19 +177,18 @@ export function CareQuestBoard({
   const [pickerDismissed, setPickerDismissed] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [inFlightAction, setInFlightAction] = useState<string | null>(null);
-  const [editingAttributionSlot, setEditingAttributionSlot] = useState<
+  const [editingAttributionLogId, setEditingAttributionLogId] = useState<
     string | null
   >(null);
   const [expandedSupplyKey, setExpandedSupplyKey] = useState<SupplyKey | null>(
     null
   );
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
-  const [alreadyFedNotice, setAlreadyFedNotice] =
-    useState<AlreadyFedNotice | null>(null);
   const [snackbar, setSnackbar] = useState<SnackbarState | null>(null);
 
   const lastRetryActionRef = useRef<(() => Promise<void>) | null>(null);
   const snackbarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const feedKeyRef = useRef<string | null>(null);
   const litterKeyRef = useRef<string | null>(null);
   const playKeyRef = useRef<string | null>(null);
 
@@ -233,14 +227,14 @@ export function CareQuestBoard({
   }, []);
 
   const showSnackbar = useCallback(
-    (message: string, undoSlotKey?: string) => {
+    (message: string, undoLogId?: string) => {
       if (snackbarTimerRef.current) {
         clearTimeout(snackbarTimerRef.current);
       }
       setSnackbar({
         id: Date.now(),
         message,
-        undoSlotKey,
+        undoLogId,
       });
       snackbarTimerRef.current = setTimeout(() => {
         setSnackbar(null);
@@ -276,7 +270,6 @@ export function CareQuestBoard({
         method: "GET",
       });
       setSnapshot(fresh);
-      setAlreadyFedNotice(null);
     } catch (err) {
       setErrorBanner(
         err instanceof CareApiError
@@ -288,78 +281,74 @@ export function CareQuestBoard({
     }
   }, [token]);
 
-  const handleFeedMeal = useCallback(
-    async (slot: FeedingSlotView) => {
-      const actor = requireCaregiver();
-      if (!actor || inFlightAction) {
-        return;
-      }
+  const handleFeedMeal = useCallback(async () => {
+    const actor = requireCaregiver();
+    if (!actor || inFlightAction) {
+      return;
+    }
 
-      const run = async () => {
-        setInFlightAction(`feed:${slot.slotKey}`);
-        setErrorBanner(null);
-        setAlreadyFedNotice(null);
-        try {
-          const result = await apiFetch<{
-            alreadyFed: boolean;
-            snapshot: DashboardSnapshot;
-          }>(token, "/api/meals/feed", {
-            method: "POST",
-            body: JSON.stringify({
-              slotKey: slot.slotKey,
-              caregiverId: actor.id,
-            }),
-          });
+    if (!feedKeyRef.current) {
+      feedKeyRef.current = generateIdempotencyKey("feed");
+    }
+    const idempotencyKey = feedKeyRef.current;
 
-          setSnapshot(result.snapshot);
-          const slotMap = {
-            AM: result.snapshot.meals.am,
-            MID: result.snapshot.meals.mid,
-            PM: result.snapshot.meals.pm,
-          };
-          const updatedSlot = slotMap[slot.period];
+    const run = async () => {
+      setInFlightAction("meals:feed");
+      setErrorBanner(null);
+      try {
+        const result = await apiFetch<{
+          alreadyFed: boolean;
+          record: { id: string };
+          snapshot: DashboardSnapshot;
+        }>(token, "/api/meals/feed", {
+          method: "POST",
+          body: JSON.stringify({
+            caregiverId: actor.id,
+            idempotencyKey,
+          }),
+        });
 
-          if (result.alreadyFed) {
-            setAlreadyFedNotice({
-              actorName: updatedSlot.completedBy?.displayName ?? "Someone",
-              timeLabel: updatedSlot.completedTimeLabel ?? slot.scheduledTimeLabel,
-            });
-          } else {
-            showSnackbar(
-              UI_COPY.meals.savedToast(
-                updatedSlot.completedTimeLabel ?? slot.scheduledTimeLabel
-              ),
-              slot.slotKey
-            );
-          }
-        } catch (err) {
-          if (err instanceof CareApiError && err.snapshot) {
-            setSnapshot(err.snapshot);
-          }
-          setErrorBanner(
-            err instanceof CareApiError
-              ? err.message
-              : UI_COPY.syncStates.offlineBody
-          );
-        } finally {
-          setInFlightAction(null);
+        feedKeyRef.current = null;
+        lastRetryActionRef.current = null;
+        setSnapshot(result.snapshot);
+        const latestEntry =
+          result.snapshot.meals.entries[
+            result.snapshot.meals.entries.length - 1
+          ];
+        showSnackbar(
+          UI_COPY.meals.savedToast(
+            latestEntry?.completedTimeLabel ?? result.snapshot.manilaTimeLabel,
+            result.snapshot.meals.count,
+            result.snapshot.meals.target
+          ),
+          result.record.id
+        );
+      } catch (err) {
+        if (err instanceof CareApiError && err.snapshot) {
+          setSnapshot(err.snapshot);
         }
-      };
+        setErrorBanner(
+          err instanceof CareApiError
+            ? err.message
+            : UI_COPY.syncStates.offlineBody
+        );
+      } finally {
+        setInFlightAction(null);
+      }
+    };
 
-      lastRetryActionRef.current = run;
-      await run();
-    },
-    [inFlightAction, requireCaregiver, showSnackbar, token]
-  );
+    lastRetryActionRef.current = run;
+    await run();
+  }, [inFlightAction, requireCaregiver, showSnackbar, token]);
 
   const handleUndoMeal = useCallback(
-    async (slotKey: string) => {
+    async (logId: string) => {
       if (inFlightAction) {
         return;
       }
 
       const run = async () => {
-        setInFlightAction(`undo:${slotKey}`);
+        setInFlightAction(`undo:${logId}`);
         setErrorBanner(null);
         try {
           const result = await apiFetch<{ snapshot: DashboardSnapshot }>(
@@ -367,12 +356,12 @@ export function CareQuestBoard({
             "/api/meals/undo",
             {
               method: "POST",
-              body: JSON.stringify({ slotKey }),
+              body: JSON.stringify({ logId }),
             }
           );
           setSnapshot(result.snapshot);
           setSnackbar(null);
-          setEditingAttributionSlot(null);
+          setEditingAttributionLogId(null);
         } catch (err) {
           setErrorBanner(
             err instanceof CareApiError
@@ -391,13 +380,13 @@ export function CareQuestBoard({
   );
 
   const handleChangeMealAttribution = useCallback(
-    async (slotKey: string, caregiverId: string) => {
+    async (logId: string, caregiverId: string) => {
       if (inFlightAction) {
         return;
       }
 
       const run = async () => {
-        setInFlightAction(`attr:${slotKey}`);
+        setInFlightAction(`attr:${logId}`);
         setErrorBanner(null);
         try {
           const result = await apiFetch<{ snapshot: DashboardSnapshot }>(
@@ -405,11 +394,11 @@ export function CareQuestBoard({
             "/api/meals/attribution",
             {
               method: "PATCH",
-              body: JSON.stringify({ slotKey, caregiverId }),
+              body: JSON.stringify({ logId, caregiverId }),
             }
           );
           setSnapshot(result.snapshot);
-          setEditingAttributionSlot(null);
+          setEditingAttributionLogId(null);
         } catch (err) {
           setErrorBanner(
             err instanceof CareApiError
@@ -657,39 +646,33 @@ export function CareQuestBoard({
     );
   };
 
-  const renderMealCard = (slot: FeedingSlotView) => {
-    const tone = getStateToneClasses(slot.state);
-    const isMealInFlight = inFlightAction === `feed:${slot.slotKey}`;
-    const isUndoInFlight = inFlightAction === `undo:${slot.slotKey}`;
-    const isAttrInFlight = inFlightAction === `attr:${slot.slotKey}`;
-    const showAttrList = editingAttributionSlot === slot.slotKey;
+  const renderMealsCard = (meals: DailyMealsView) => {
+    const tone = getStateToneClasses(meals.state);
+    const isMealInFlight = inFlightAction === "meals:feed";
+    const clampedMealPercent = Math.min(100, Math.max(0, meals.progressPercent));
 
-    const mealBody = (() => {
-      switch (slot.state) {
-        case "UPCOMING":
-          return UI_COPY.meals.upcomingBody(slot.scheduledTimeLabel);
-        case "DUE_NOW":
-          return UI_COPY.meals.dueBody;
-        case "OVERDUE":
-          return UI_COPY.meals.overdueBody(slot.minutesOverdue, helperName);
-        case "DONE":
-          return UI_COPY.meals.doneBody(
-            slot.completedBy?.displayName ?? "Caregiver",
-            slot.completedTimeLabel ?? slot.scheduledTimeLabel
-          );
+    const mealsBody = (() => {
+      if (meals.state === "OVERDUE") {
+        return UI_COPY.meals.overdueBody(meals.count, meals.target, helperName);
       }
+      if (meals.isGoalMet) {
+        return UI_COPY.meals.goalMetBody(meals.target);
+      }
+      if (meals.count === 0) {
+        return UI_COPY.meals.emptyBody(meals.target);
+      }
+      return UI_COPY.meals.progressBody(meals.count, meals.target);
     })();
 
-    const isEarlyBlocked = slot.state === "UPCOMING" && !slot.canLogEarly;
-    const isActionFocus = slot.state === "DUE_NOW" || slot.state === "OVERDUE";
+    const isMealsActionFocus =
+      meals.state === "DUE_NOW" || meals.state === "OVERDUE";
 
     return (
       <article
-        key={slot.slotKey}
-        data-testid={`meal-card-${slot.period.toLowerCase()}`}
+        data-testid="meals-today-card"
         className={`rounded-[16px] bg-[var(--bg-card)] ${
-          isActionFocus
-            ? slot.state === "OVERDUE"
+          isMealsActionFocus
+            ? meals.state === "OVERDUE"
               ? "border-2 border-[var(--coral-accent)] sunlit-hero-card p-4 sm:p-5"
               : "border-2 border-[var(--brand-coat)] sunlit-hero-card p-4 sm:p-5"
             : `border ${tone.border} sunlit-card p-3.5 sm:p-4`
@@ -700,9 +683,9 @@ export function CareQuestBoard({
             <span
               aria-hidden="true"
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] ${
-                slot.state === "OVERDUE"
+                meals.state === "OVERDUE"
                   ? "bg-[var(--coral-bg)] text-[var(--coral-strong)]"
-                  : slot.state === "DUE_NOW"
+                  : meals.state === "DUE_NOW"
                     ? "bg-[var(--brand-bg)] text-[var(--brand-primary)]"
                     : "bg-[var(--bg-subtle)] text-[var(--ink-secondary)]"
               }`}
@@ -711,195 +694,231 @@ export function CareQuestBoard({
             </span>
             <div className="min-w-0">
               <h2 className="font-display text-lg font-bold tracking-[-0.01em] text-[var(--ink-primary)] truncate">
-                {slot.label}
+                {UI_COPY.meals.title}
               </h2>
               <p className="text-xs font-medium text-[var(--ink-tertiary)] tabular-nums">
-                {slot.scheduledTimeLabel}
+                {meals.count} of {meals.target} today
               </p>
             </div>
           </div>
 
-          <span
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${tone.badge}`}
-          >
-            <StateIcon state={slot.state} />
-            <span>{UI_COPY.meals.states[slot.state]}</span>
-          </span>
+          {meals.isGoalMet ? (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--sage-border)] bg-[var(--sage-bg)] px-3 py-1 text-xs font-bold text-[var(--sage-strong)] tabular-nums">
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>
+                {UI_COPY.meals.goalDoneBadge} ({meals.count} of {meals.target})
+              </span>
+            </span>
+          ) : (
+            <span
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold tabular-nums ${tone.badge}`}
+            >
+              <StateIcon state={meals.state} />
+              <span>
+                {meals.count} of {meals.target}
+              </span>
+            </span>
+          )}
+        </div>
+
+        <div
+          className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-[var(--bg-subtle)] border border-[var(--border-hairline)]"
+          role="progressbar"
+          aria-label={UI_COPY.meals.title}
+          aria-valuemin={0}
+          aria-valuemax={meals.target}
+          aria-valuenow={meals.count}
+        >
+          <div
+            className="h-full rounded-full bg-[var(--sage-text)] kitchen-transition"
+            style={{ width: `${clampedMealPercent}%` }}
+          />
         </div>
 
         <p className="mt-3 text-sm sm:text-base text-[var(--ink-secondary)] leading-relaxed">
-          {mealBody}
+          {mealsBody}
         </p>
 
-        {slot.state !== "DONE" ? (
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => void handleFeedMeal(slot)}
-              disabled={Boolean(inFlightAction) || isEarlyBlocked}
-              aria-describedby={
-                isEarlyBlocked ? `early-hint-${slot.slotKey}` : undefined
-              }
-              data-testid={`feed-cta-${slot.period.toLowerCase()}`}
-              className={`inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] px-4 font-display text-base font-bold kitchen-transition sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-                isEarlyBlocked
-                  ? "cursor-not-allowed border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--ink-tertiary)]"
-                  : slot.state === "OVERDUE"
-                    ? "bg-[var(--coral-text)] text-white hover:bg-[var(--coral-strong)] focus-visible:ring-[var(--coral-text)]"
-                    : slot.state === "UPCOMING"
-                      ? "border border-[var(--border-control)] bg-[var(--bg-subtle)] text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:ring-[var(--ring-focus)]"
-                      : "bg-[var(--brand-primary)] text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] focus-visible:ring-[var(--ring-focus)]"
-              } disabled:opacity-65`}
-            >
-              {isMealInFlight ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-                  <span>{UI_COPY.meals.savingCta}</span>
-                </>
-              ) : (
-                <>
-                  <Check className="h-5 w-5" aria-hidden="true" />
-                  <span>
-                    {slot.state === "OVERDUE"
-                      ? UI_COPY.meals.markFedOverdueCta
-                      : slot.state === "UPCOMING"
-                        ? UI_COPY.meals.markFedEarlyCta
-                        : UI_COPY.meals.markFedCta}
-                  </span>
-                </>
-              )}
-            </button>
-            {isEarlyBlocked ? (
-              <p
-                id={`early-hint-${slot.slotKey}`}
-                className="mt-2 text-xs font-medium text-[var(--ink-tertiary)]"
-              >
-                {UI_COPY.meals.earlyWindowError(slot.scheduledTimeLabel)}
-              </p>
-            ) : null}
-          </div>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {slot.completedBy ? (
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] bg-[var(--sage-bg)]/60 border border-[var(--sage-border)] px-3 py-2.5">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <CaregiverBadge
-                    initials={slot.completedBy.avatarInitials}
-                    colorKey={slot.completedBy.avatarColor}
-                    size="sm"
-                  />
-                  <span className="truncate text-sm font-semibold text-[var(--sage-strong)] tabular-nums">
-                    {slot.completedBy.displayName} • {slot.completedTimeLabel}
-                  </span>
-                </div>
-              </div>
-            ) : null}
+        {meals.entries.length > 0 ? (
+          <ul
+            data-testid="meal-entries-list"
+            className="mt-3 space-y-2"
+          >
+            {meals.entries.map((entry, idx) => {
+              const isUndoInFlight = inFlightAction === `undo:${entry.id}`;
+              const isAttrInFlight = inFlightAction === `attr:${entry.id}`;
+              const showAttrList = editingAttributionLogId === entry.id;
 
-            <div className="flex flex-wrap gap-2">
-              {slot.canUndo ? (
-                <button
-                  type="button"
-                  onClick={() => void handleUndoMeal(slot.slotKey)}
-                  disabled={Boolean(inFlightAction)}
-                  data-testid={`undo-meal-${slot.period.toLowerCase()}`}
-                  className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-card)] px-3 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] disabled:opacity-60"
+              return (
+                <li
+                  key={entry.id}
+                  data-testid={`meal-entry-${idx}`}
+                  className="rounded-[12px] border border-[var(--sage-border)] bg-[var(--sage-bg)]/50 p-2.5 space-y-2"
                 >
-                  {isUndoInFlight ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                  ) : (
-                    <Undo2 className="h-4 w-4" aria-hidden="true" />
-                  )}
-                  <span>{UI_COPY.meals.undoCta}</span>
-                </button>
-              ) : null}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {entry.completedBy ? (
+                        <CaregiverBadge
+                          initials={entry.completedBy.avatarInitials}
+                          colorKey={entry.completedBy.avatarColor}
+                          size="sm"
+                        />
+                      ) : null}
+                      <span className="truncate text-sm font-semibold text-[var(--sage-strong)] tabular-nums">
+                        Meal #{idx + 1}:{" "}
+                        {entry.completedBy?.displayName ?? "Caregiver"} •{" "}
+                        {entry.completedTimeLabel}
+                      </span>
+                    </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  setEditingAttributionSlot((prev) =>
-                    prev === slot.slotKey ? null : slot.slotKey
-                  )
-                }
-                aria-expanded={showAttrList}
-                data-testid={`change-name-${slot.period.toLowerCase()}`}
-                className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-card)] px-3 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
-              >
-                <span>{UI_COPY.meals.changeNameCta}</span>
-              </button>
-            </div>
-
-            {showAttrList ? (
-              <div className="rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3">
-                <p className="mb-2 text-xs font-semibold text-[var(--ink-secondary)]">
-                  {UI_COPY.avatarPicker.switchSubtitle}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {snapshot.caregivers
-                    .filter((c) => c.isActive)
-                    .map((person) => {
-                      const isCurrent = slot.completedBy?.id === person.id;
-                      return (
+                    <div className="flex items-center gap-1.5">
+                      {entry.canUndo ? (
                         <button
-                          key={person.id}
                           type="button"
-                          disabled={isAttrInFlight}
-                          onClick={() =>
-                            void handleChangeMealAttribution(
-                              slot.slotKey,
-                              person.id
-                            )
-                          }
-                          className={`flex min-h-[44px] items-center gap-2 rounded-[10px] border px-2.5 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
-                            isCurrent
-                              ? "border-[var(--sage-text)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
-                              : "border-[var(--border-hairline)] bg-[var(--bg-card)] text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
-                          }`}
+                          onClick={() => void handleUndoMeal(entry.id)}
+                          disabled={Boolean(inFlightAction)}
+                          data-testid={`undo-meal-${idx}`}
+                          aria-label={`Undo Meal #${idx + 1}`}
+                          className="inline-flex min-h-[44px] items-center justify-center gap-1 rounded-[10px] border border-[var(--border-control)] bg-[var(--bg-card)] px-2.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] disabled:opacity-60"
                         >
-                          <CaregiverBadge
-                            initials={person.avatarInitials}
-                            colorKey={person.avatarColor}
-                            size="sm"
-                          />
-                          <span className="truncate">{person.displayName}</span>
+                          {isUndoInFlight ? (
+                            <Loader2
+                              className="h-3.5 w-3.5 animate-spin"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
+                          )}
+                          <span>{UI_COPY.meals.undoCta}</span>
                         </button>
-                      );
-                    })}
-                </div>
-              </div>
-            ) : null}
+                      ) : null}
 
-            {slot.showFoodStockPiggyback ? (
-              <div
-                data-testid="food-stock-piggyback"
-                className="rounded-[12px] border border-[var(--amber-border)] bg-[var(--amber-bg)] p-3"
-              >
-                <p className="text-sm font-semibold text-[var(--amber-strong)]">
-                  {UI_COPY.meals.foodPiggybackQuestion}
-                </p>
-                <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {SUPPLY_LEVELS.map((lvl) => {
-                    const isSelected = snapshot.supplies.food.level === lvl;
-                    return (
                       <button
-                        key={lvl}
                         type="button"
-                        disabled={Boolean(inFlightAction)}
-                        onClick={() => void handleUpdateSupply("CAT_FOOD", lvl)}
-                        className={`min-h-[44px] rounded-[10px] border px-2 text-sm font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--amber-text)] ${
-                          isSelected
-                            ? "border-[var(--amber-text)] bg-white text-[var(--amber-strong)]"
-                            : "border-[var(--amber-border)] bg-white/80 text-[var(--ink-primary)] hover:bg-white"
-                        }`}
+                        onClick={() =>
+                          setEditingAttributionLogId((prev) =>
+                            prev === entry.id ? null : entry.id
+                          )
+                        }
+                        aria-expanded={showAttrList}
+                        data-testid={`change-name-${idx}`}
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-[10px] border border-[var(--border-control)] bg-[var(--bg-card)] px-2.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
                       >
-                        {UI_COPY.supplies.levels[lvl]}
+                        <span>{UI_COPY.meals.changeNameCta}</span>
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
+                    </div>
+                  </div>
+
+                  {showAttrList ? (
+                    <div className="rounded-[10px] border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-2.5">
+                      <p className="mb-2 text-xs font-semibold text-[var(--ink-secondary)]">
+                        {UI_COPY.avatarPicker.switchSubtitle}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {snapshot.caregivers
+                          .filter((c) => c.isActive)
+                          .map((person) => {
+                            const isCurrent =
+                              entry.completedBy?.id === person.id;
+                            return (
+                              <button
+                                key={person.id}
+                                type="button"
+                                disabled={isAttrInFlight}
+                                onClick={() =>
+                                  void handleChangeMealAttribution(
+                                    entry.id,
+                                    person.id
+                                  )
+                                }
+                                className={`flex min-h-[44px] items-center gap-2 rounded-[10px] border px-2.5 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
+                                  isCurrent
+                                    ? "border-[var(--sage-text)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
+                                    : "border-[var(--border-hairline)] bg-[var(--bg-card)] text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
+                                }`}
+                              >
+                                <CaregiverBadge
+                                  initials={person.avatarInitials}
+                                  colorKey={person.avatarColor}
+                                  size="sm"
+                                />
+                                <span className="truncate">
+                                  {person.displayName}
+                                </span>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => void handleFeedMeal()}
+            disabled={Boolean(inFlightAction)}
+            data-testid="feed-cta"
+            className={`inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] px-4 font-display text-base font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+              meals.state === "OVERDUE"
+                ? "bg-[var(--coral-text)] text-white hover:bg-[var(--coral-strong)] focus-visible:ring-[var(--coral-text)]"
+                : meals.isGoalMet
+                  ? "border border-[var(--border-control)] bg-[var(--bg-subtle)] text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:ring-[var(--ring-focus)]"
+                  : "bg-[var(--brand-primary)] text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] focus-visible:ring-[var(--ring-focus)]"
+            } disabled:opacity-65`}
+          >
+            {isMealInFlight ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                <span>{UI_COPY.meals.savingCta}</span>
+              </>
+            ) : (
+              <>
+                <Check className="h-5 w-5" aria-hidden="true" />
+                <span>
+                  {meals.isGoalMet
+                    ? UI_COPY.meals.extraMealCta
+                    : UI_COPY.meals.markFedCta}
+                </span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {meals.showFoodStockPiggyback ? (
+          <div
+            data-testid="food-stock-piggyback"
+            className="mt-3 rounded-[12px] border border-[var(--amber-border)] bg-[var(--amber-bg)] p-3"
+          >
+            <p className="text-sm font-semibold text-[var(--amber-strong)]">
+              {UI_COPY.meals.foodPiggybackQuestion}
+            </p>
+            <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {SUPPLY_LEVELS.map((lvl) => {
+                const isSelected = snapshot.supplies.food.level === lvl;
+                return (
+                  <button
+                    key={lvl}
+                    type="button"
+                    disabled={Boolean(inFlightAction)}
+                    onClick={() => void handleUpdateSupply("CAT_FOOD", lvl)}
+                    className={`min-h-[44px] rounded-[10px] border px-2 text-sm font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--amber-text)] ${
+                      isSelected
+                        ? "border-[var(--amber-text)] bg-white text-[var(--amber-strong)]"
+                        : "border-[var(--amber-border)] bg-white/80 text-[var(--ink-primary)] hover:bg-white"
+                    }`}
+                  >
+                    {UI_COPY.supplies.levels[lvl]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        )}
+        ) : null}
       </article>
     );
   };
@@ -922,10 +941,7 @@ export function CareQuestBoard({
   })();
 
   const allMealsDoneAndSafe =
-    snapshot.survivability.status === "SAFE" &&
-    snapshot.meals.am.state === "DONE" &&
-    snapshot.meals.mid.state === "DONE" &&
-    snapshot.meals.pm.state === "DONE";
+    snapshot.survivability.status === "SAFE" && snapshot.meals.isGoalMet;
   const isLitterActionFocus =
     snapshot.litter.state === "DUE_NOW" || snapshot.litter.state === "OVERDUE";
 
@@ -983,42 +999,6 @@ export function CareQuestBoard({
                     className="inline-flex min-h-[44px] items-center rounded-[12px] border border-[var(--coral-border)] bg-white px-4 text-sm font-semibold text-[var(--coral-strong)] hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral-text)]"
                   >
                     {UI_COPY.syncStates.refreshCta}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {alreadyFedNotice ? (
-          <div
-            role="status"
-            data-testid="already-fed-banner"
-            className="rounded-[16px] border border-[var(--amber-border)] bg-[var(--amber-bg)] p-4"
-          >
-            <div className="flex items-start gap-3">
-              <CheckCircle2
-                className="mt-0.5 h-5 w-5 shrink-0 text-[var(--amber-accent)]"
-                aria-hidden="true"
-              />
-              <div className="min-w-0 flex-1">
-                <h2 className="font-display text-base font-bold text-[var(--amber-strong)]">
-                  {UI_COPY.meals.alreadyFedTitle}
-                </h2>
-                <p className="mt-1 text-sm text-[var(--ink-primary)]">
-                  {UI_COPY.meals.alreadyFedBody(
-                    alreadyFedNotice.actorName,
-                    alreadyFedNotice.timeLabel
-                  )}
-                </p>
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={() => void refreshDashboard()}
-                    className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[12px] border border-[var(--amber-border)] bg-white px-4 text-sm font-bold text-[var(--amber-strong)] hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--amber-text)]"
-                  >
-                    <RefreshCw className="h-4 w-4" aria-hidden="true" />
-                    <span>{UI_COPY.syncStates.refreshCta}</span>
                   </button>
                 </div>
               </div>
@@ -1091,7 +1071,7 @@ export function CareQuestBoard({
                 aria-hidden="true"
               />
               <p className="text-sm font-semibold text-[var(--sage-strong)]">
-                All 3 meals are done. Maki is resting easy tonight.
+                All {snapshot.meals.target} meals are done. Maki is resting easy tonight.
               </p>
             </div>
           ) : null}
@@ -1099,9 +1079,7 @@ export function CareQuestBoard({
 
         {/* CHUNK 2: Today's Essential Quests */}
         <section aria-label="Today's Essential Quests" className="space-y-3">
-          {renderMealCard(snapshot.meals.am)}
-          {renderMealCard(snapshot.meals.mid)}
-          {renderMealCard(snapshot.meals.pm)}
+          {renderMealsCard(snapshot.meals)}
 
           <article
             data-testid="litter-quest-card"
@@ -1410,13 +1388,13 @@ export function CareQuestBoard({
         >
           <span className="text-sm font-medium">{snackbar.message}</span>
           <div className="flex shrink-0 items-center gap-1.5">
-            {snackbar.undoSlotKey ? (
+            {snackbar.undoLogId ? (
               <button
                 type="button"
                 disabled={Boolean(inFlightAction)}
                 onClick={() => {
-                  if (snackbar.undoSlotKey) {
-                    void handleUndoMeal(snackbar.undoSlotKey);
+                  if (snackbar.undoLogId) {
+                    void handleUndoMeal(snackbar.undoLogId);
                   }
                 }}
                 className="inline-flex min-h-[44px] items-center gap-1 rounded-[10px] border border-[var(--sage-border)] bg-[var(--sage-strong)] px-3 text-xs font-bold text-white hover:bg-[var(--sage-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"

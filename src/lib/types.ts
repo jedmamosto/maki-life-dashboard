@@ -12,7 +12,7 @@ export interface Caregiver {
   isActive: boolean;
 }
 
-export const FEEDING_PERIODS = ["AM", "MID", "PM"] as const;
+export const FEEDING_PERIODS = ["AM", "MID", "PM", "COUNT"] as const;
 export type FeedingPeriod = (typeof FEEDING_PERIODS)[number];
 
 export type TaskVisualState = "UPCOMING" | "DUE_NOW" | "OVERDUE" | "DONE";
@@ -27,10 +27,8 @@ export type PushPlatform = "ios_pwa" | "android_pwa" | "desktop";
 
 export type EscalationStage =
   | "NONE"
-  | "T0_HELPER"
-  | "T20_HELPER"
-  | "T45_FAMILY_OWNER"
-  | "T120_OWNER";
+  | "REMINDER_SENT"
+  | "OWNER_ESCALATED";
 
 export type SurvivabilityStatus = "SAFE" | "ATTENTION" | "OVERDUE";
 
@@ -97,6 +95,10 @@ export interface HouseholdSettingsRecord {
   midMealMinute: number;
   pmMealHour: number;
   pmMealMinute: number;
+  dailyMealGoal: number;
+  mealReminderHour: number;
+  mealReminderMinute: number;
+  lastCronTickAtIso: string | null;
   litterIntervalHours: number;
   weeklyPlayGoal: number;
   ownerEmail: string;
@@ -105,20 +107,22 @@ export interface HouseholdSettingsRecord {
   updatedAtIso: string;
 }
 
-export interface FeedingSlotView {
-  slotKey: string;
-  serviceDate: string;
-  period: FeedingPeriod;
-  label: string;
-  scheduledTimeLabel: string;
-  dueAtIso: string;
-  state: TaskVisualState;
-  canLogEarly: boolean;
-  minutesOverdue: number;
+export interface MealLogEntryView {
+  id: string;
   completedBy: Caregiver | null;
-  completedAtIso: string | null;
-  completedTimeLabel: string | null;
+  completedAtIso: string;
+  completedTimeLabel: string;
   canUndo: boolean;
+}
+
+export interface DailyMealsView {
+  serviceDate: string;
+  count: number;
+  target: number;
+  isGoalMet: boolean;
+  progressPercent: number;
+  state: TaskVisualState;
+  entries: MealLogEntryView[];
   showFoodStockPiggyback: boolean;
 }
 
@@ -189,9 +193,9 @@ export interface PushHealthSummary {
 
 export interface HouseholdSettingsView {
   householdTimezone: string;
-  amMealTime: string;
-  midMealTime: string;
-  pmMealTime: string;
+  dailyMealGoal: number;
+  mealReminderTime: string;
+  lastCronTickAtIso: string | null;
   litterIntervalHours: number;
   weeklyPlayGoal: number;
   ownerEmail: string;
@@ -205,11 +209,7 @@ export interface DashboardSnapshot {
   manilaTimeLabel: string;
   isoWeekKey: string;
   survivability: SurvivabilitySummary;
-  meals: {
-    am: FeedingSlotView;
-    mid: FeedingSlotView;
-    pm: FeedingSlotView;
-  };
+  meals: DailyMealsView;
   litter: LitterStatusView;
   supplies: {
     food: SupplyView;
@@ -227,18 +227,16 @@ export interface DayComplianceCell {
   dateKey: string;
   shortLabel: string;
   weekdayLabel: string;
-  amStatus: "ON_TIME" | "LATE" | "MISSED" | "UPCOMING";
-  midStatus: "ON_TIME" | "LATE" | "MISSED" | "UPCOMING";
-  pmStatus: "ON_TIME" | "LATE" | "MISSED" | "UPCOMING";
+  mealCount: number;
+  mealGoal: number;
+  mealStatus: "ON_TIME" | "PARTIAL" | "MISSED" | "UPCOMING";
   litterStatus: "DONE" | "LATE" | "MISSED" | "NOT_DUE";
   playCount: number;
   details: {
-    amFedBy: string | null;
-    amFedAt: string | null;
-    midFedBy: string | null;
-    midFedAt: string | null;
-    pmFedBy: string | null;
-    pmFedAt: string | null;
+    meals: Array<{
+      fedBy: string;
+      fedAt: string;
+    }>;
     litterBy: string | null;
     litterAt: string | null;
     playBy: string[];
@@ -256,7 +254,7 @@ export interface TodayTimelineItem {
 
 export interface OwnerHistoryResponse {
   days: DayComplianceCell[];
-  onTimePercent: number;
+  mealGoalHitPercent: number;
   coreStreakDays: number;
   pushHealth: PushHealthSummary;
   todayTimeline: TodayTimelineItem[];
@@ -289,7 +287,8 @@ export interface CareRepository {
     patch: Partial<Omit<HouseholdSettingsRecord, "id">>,
   ): Promise<HouseholdSettingsRecord>;
 
-  getActiveFeedingBySlot(slotKey: string): Promise<FeedingLogRecord | null>;
+  listActiveFeedingsByDate(serviceDate: string): Promise<FeedingLogRecord[]>;
+  getFeedingById(id: string): Promise<FeedingLogRecord | null>;
   listFeedingsInRange(
     startDateKey: string,
     endDateKey: string,
@@ -302,12 +301,12 @@ export interface CareRepository {
     completedById: string;
     completedAtIso: string;
   }): Promise<FeedMealResult>;
-  undoFeedingBySlot(
-    slotKey: string,
+  undoFeedingById(
+    id: string,
     undoneAtIso: string,
   ): Promise<FeedingLogRecord | null>;
-  updateFeedingAttribution(
-    slotKey: string,
+  updateFeedingAttributionById(
+    id: string,
     caregiverId: string,
   ): Promise<FeedingLogRecord | null>;
 

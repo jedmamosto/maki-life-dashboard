@@ -54,7 +54,7 @@ describe("notification & escalation pipeline", () => {
     });
   });
 
-  it("[AC-023] escalates meal in 4 deduped tiers with RFC 8030 payload and T+120m email", async () => {
+  it("[AC-023] sends daily shortfall check-in to Helper + Owner at reminder time and Owner email at +60m, while recording lastCronTickAtIso", async () => {
     // Seed a recent litter clean so litter alerts do not interfere
     await repo.logCareEvent({
       id: "clean-0",
@@ -65,58 +65,50 @@ describe("notification & escalation pipeline", () => {
       idempotencyKey: "clean-0",
     });
 
-    // T+0 (10:00 AM PHT) -> Helper only
+    // Before 20:00 PHT check-in -> 0 alerts, but lastCronTickAtIso is recorded
+    const morningIso = getSlotScheduledAt("2026-11-20", 10, 0).toISOString();
     await runCronEscalations({
       repo,
-      now: getSlotScheduledAt("2026-11-20", 10, 0),
+      now: new Date(morningIso),
       baseUrl: "http://localhost:3000",
     });
-    expect(push.sent.map((s) => s.endpoint)).toEqual(["https://push.example/ate"]);
+    expect(push.sent).toHaveLength(0);
+    expect((await repo.getSettings()).lastCronTickAtIso).toBe(morningIso);
+
+    // At 20:00 PHT check-in with 0/3 meals -> Helper + Owner push
+    await runCronEscalations({
+      repo,
+      now: getSlotScheduledAt("2026-11-20", 20, 0),
+      baseUrl: "http://localhost:3000",
+    });
+    expect(push.sent.map((s) => s.endpoint).sort()).toEqual([
+      "https://push.example/ate",
+      "https://push.example/jed",
+    ]);
     expect(push.sent[0].payload.web_push).toBe(8030);
     expect(push.sent[0].options).toEqual({ urgency: "high", TTL: 1800 });
 
-    // Re-running at T+5m sends 0 duplicates
+    // Re-running at 20:15 PHT sends 0 duplicates
     await runCronEscalations({
       repo,
-      now: getSlotScheduledAt("2026-11-20", 10, 5),
-      baseUrl: "http://localhost:3000",
-    });
-    expect(push.sent).toHaveLength(1);
-
-    // T+20m -> Helper self-check
-    await runCronEscalations({
-      repo,
-      now: getSlotScheduledAt("2026-11-20", 10, 20),
+      now: getSlotScheduledAt("2026-11-20", 20, 15),
       baseUrl: "http://localhost:3000",
     });
     expect(push.sent).toHaveLength(2);
-    expect(push.sent[1].endpoint).toBe("https://push.example/ate");
 
-    // T+45m -> Family + Owner
+    // +60m (21:00 PHT) -> Owner urgent push + Resend email
     await runCronEscalations({
       repo,
-      now: getSlotScheduledAt("2026-11-20", 10, 45),
+      now: getSlotScheduledAt("2026-11-20", 21, 0),
       baseUrl: "http://localhost:3000",
     });
-    expect(push.sent).toHaveLength(4);
-    expect(push.sent.slice(2).map((s) => s.endpoint).sort()).toEqual([
-      "https://push.example/jed",
-      "https://push.example/mom",
-    ]);
-
-    // T+120m -> Owner urgent push + Resend email
-    await runCronEscalations({
-      repo,
-      now: getSlotScheduledAt("2026-11-20", 12, 0),
-      baseUrl: "http://localhost:3000",
-    });
-    expect(push.sent).toHaveLength(5);
-    expect(push.sent[4].endpoint).toBe("https://push.example/jed");
+    expect(push.sent).toHaveLength(3);
+    expect(push.sent[2].endpoint).toBe("https://push.example/jed");
     expect(email.sent).toHaveLength(1);
     expect(email.sent[0].to).toBe("owner@example.com");
   });
 
-  it("[AC-024] suppresses all 4 meal escalation tiers when meal was fed early", async () => {
+  it("[AC-024] suppresses daily shortfall alerts when dailyMealGoal is already met", async () => {
     await repo.logCareEvent({
       id: "clean-0",
       eventType: "LITTER_CLEAN",
@@ -126,18 +118,20 @@ describe("notification & escalation pipeline", () => {
       idempotencyKey: "clean-0",
     });
 
-    await repo.logFeedingAtomic({
-      slotKey: "2026-11-20:AM",
-      serviceDate: "2026-11-20",
-      period: "AM",
-      dueAtIso: getSlotScheduledAt("2026-11-20", 10, 0).toISOString(),
-      completedById: "ate",
-      completedAtIso: getSlotScheduledAt("2026-11-20", 8, 45).toISOString(),
-    });
+    for (const [idx, hour] of [9, 13, 18].entries()) {
+      await repo.logFeedingAtomic({
+        slotKey: `2026-11-20:LOG:m-${idx}`,
+        serviceDate: "2026-11-20",
+        period: "COUNT",
+        dueAtIso: getSlotScheduledAt("2026-11-20", hour, 0).toISOString(),
+        completedById: "ate",
+        completedAtIso: getSlotScheduledAt("2026-11-20", hour, 0).toISOString(),
+      });
+    }
 
     await runCronEscalations({
       repo,
-      now: getSlotScheduledAt("2026-11-20", 12, 30),
+      now: getSlotScheduledAt("2026-11-20", 21, 30),
       baseUrl: "http://localhost:3000",
     });
     expect(push.sent).toHaveLength(0);
@@ -368,19 +362,24 @@ describe("notification & escalation pipeline", () => {
     expect(ownerAlerts[0].payload.notification.title).toContain("Helper");
   });
 
-  it("escalates MID (2:00 PM) meal independently when AM is already fed", async () => {
+  it("respects custom mealReminderHour/Minute and dailyMealGoal settings", async () => {
     await repo.logCareEvent({
-      id: "clean-mid",
+      id: "clean-custom",
       eventType: "LITTER_CLEAN",
       caregiverId: "ate",
       occurredAtIso: getSlotScheduledAt("2026-11-20", 8, 0).toISOString(),
       isoWeekKey: "2026-W47",
-      idempotencyKey: "clean-mid",
+      idempotencyKey: "clean-custom",
+    });
+    await repo.updateSettings({
+      dailyMealGoal: 2,
+      mealReminderHour: 18,
+      mealReminderMinute: 30,
     });
     await repo.logFeedingAtomic({
-      slotKey: "2026-11-20:AM",
+      slotKey: "2026-11-20:LOG:only-one",
       serviceDate: "2026-11-20",
-      period: "AM",
+      period: "COUNT",
       dueAtIso: getSlotScheduledAt("2026-11-20", 10, 0).toISOString(),
       completedById: "ate",
       completedAtIso: getSlotScheduledAt("2026-11-20", 10, 0).toISOString(),
@@ -388,11 +387,10 @@ describe("notification & escalation pipeline", () => {
 
     await runCronEscalations({
       repo,
-      now: getSlotScheduledAt("2026-11-20", 14, 0),
+      now: getSlotScheduledAt("2026-11-20", 18, 30),
       baseUrl: "http://localhost:3000",
     });
-    expect(push.sent).toHaveLength(1);
-    expect(push.sent[0].endpoint).toBe("https://push.example/ate");
-    expect(push.sent[0].payload.notification.title).toContain("2:00 PM");
+    expect(push.sent).toHaveLength(2);
+    expect(push.sent[0].payload.notification.title).toContain("1 of 2");
   });
 });

@@ -42,15 +42,10 @@ const CaregiverUpdateSchema = z.object({
 });
 
 const UpdateSettingsSchema = z.object({
-  amMealHour: z.number().int().min(0).max(23).optional(),
-  amMealMinute: z.number().int().min(0).max(59).optional(),
-  midMealHour: z.number().int().min(0).max(23).optional(),
-  midMealMinute: z.number().int().min(0).max(59).optional(),
-  pmMealHour: z.number().int().min(0).max(23).optional(),
-  pmMealMinute: z.number().int().min(0).max(59).optional(),
-  amMealTime: TimeStringSchema.optional(),
-  midMealTime: TimeStringSchema.optional(),
-  pmMealTime: TimeStringSchema.optional(),
+  dailyMealGoal: z.number().int().min(1).max(10).optional(),
+  mealReminderHour: z.number().int().min(0).max(23).optional(),
+  mealReminderMinute: z.number().int().min(0).max(59).optional(),
+  mealReminderTime: TimeStringSchema.optional(),
   litterIntervalHours: z.number().int().min(12).max(168).optional(),
   weeklyPlayGoal: z.number().int().min(1).max(14).optional(),
   ownerEmail: z.union([z.literal(""), z.email()]).optional(),
@@ -137,31 +132,21 @@ export async function PATCH(request: Request): Promise<NextResponse> {
     updatedAtIso: now.toISOString(),
   };
 
-  if (data.amMealTime) {
-    const t = parseTimeString(data.amMealTime);
-    patch.amMealHour = t.hour;
-    patch.amMealMinute = t.minute;
-  } else {
-    if (data.amMealHour !== undefined) patch.amMealHour = data.amMealHour;
-    if (data.amMealMinute !== undefined) patch.amMealMinute = data.amMealMinute;
+  if (data.dailyMealGoal !== undefined) {
+    patch.dailyMealGoal = data.dailyMealGoal;
   }
 
-  if (data.midMealTime) {
-    const t = parseTimeString(data.midMealTime);
-    patch.midMealHour = t.hour;
-    patch.midMealMinute = t.minute;
+  if (data.mealReminderTime) {
+    const t = parseTimeString(data.mealReminderTime);
+    patch.mealReminderHour = t.hour;
+    patch.mealReminderMinute = t.minute;
   } else {
-    if (data.midMealHour !== undefined) patch.midMealHour = data.midMealHour;
-    if (data.midMealMinute !== undefined) patch.midMealMinute = data.midMealMinute;
-  }
-
-  if (data.pmMealTime) {
-    const t = parseTimeString(data.pmMealTime);
-    patch.pmMealHour = t.hour;
-    patch.pmMealMinute = t.minute;
-  } else {
-    if (data.pmMealHour !== undefined) patch.pmMealHour = data.pmMealHour;
-    if (data.pmMealMinute !== undefined) patch.pmMealMinute = data.pmMealMinute;
+    if (data.mealReminderHour !== undefined) {
+      patch.mealReminderHour = data.mealReminderHour;
+    }
+    if (data.mealReminderMinute !== undefined) {
+      patch.mealReminderMinute = data.mealReminderMinute;
+    }
   }
 
   if (data.litterIntervalHours !== undefined) {

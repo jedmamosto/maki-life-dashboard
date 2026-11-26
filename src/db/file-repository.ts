@@ -102,6 +102,10 @@ export function createInitialCareStore(): CareStoreSnapshot {
       midMealMinute: 0,
       pmMealHour: 19,
       pmMealMinute: 0,
+      dailyMealGoal: 3,
+      mealReminderHour: 20,
+      mealReminderMinute: 0,
+      lastCronTickAtIso: null,
       litterIntervalHours: 48,
       weeklyPlayGoal: 3,
       ownerEmail: process.env.OWNER_ALERT_EMAIL ?? "",
@@ -290,13 +294,29 @@ export class MemoryCareRepository implements CareRepository {
     });
   }
 
-  public async getActiveFeedingBySlot(
-    slotKey: string,
-  ): Promise<FeedingLogRecord | null> {
+  public async listActiveFeedingsByDate(
+    serviceDate: string,
+  ): Promise<FeedingLogRecord[]> {
+    return this.mutex.runExclusive(async () => {
+      const store = await this.readState();
+      return store.feedingLogs
+        .filter(
+          (row) => row.serviceDate === serviceDate && row.undoneAtIso === null,
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.completedAtIso).getTime() -
+            new Date(b.completedAtIso).getTime(),
+        )
+        .map((row) => ({ ...row }));
+    });
+  }
+
+  public async getFeedingById(id: string): Promise<FeedingLogRecord | null> {
     return this.mutex.runExclusive(async () => {
       const store = await this.readState();
       const found = store.feedingLogs.find(
-        (row) => row.slotKey === slotKey && row.undoneAtIso === null,
+        (row) => row.id === id && row.undoneAtIso === null,
       );
       return found ? { ...found } : null;
     });
@@ -314,6 +334,11 @@ export class MemoryCareRepository implements CareRepository {
             row.undoneAtIso === null &&
             row.serviceDate >= startDateKey &&
             row.serviceDate <= endDateKey,
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.completedAtIso).getTime() -
+            new Date(b.completedAtIso).getTime(),
         )
         .map((row) => ({ ...row }));
     });
@@ -369,14 +394,14 @@ export class MemoryCareRepository implements CareRepository {
     });
   }
 
-  public async undoFeedingBySlot(
-    slotKey: string,
+  public async undoFeedingById(
+    id: string,
     undoneAtIso: string,
   ): Promise<FeedingLogRecord | null> {
     return this.mutex.runExclusive(async () => {
       const store = await this.readState();
       const idx = store.feedingLogs.findIndex(
-        (row) => row.slotKey === slotKey && row.undoneAtIso === null,
+        (row) => row.id === id && row.undoneAtIso === null,
       );
       if (idx < 0) {
         return null;
@@ -390,8 +415,8 @@ export class MemoryCareRepository implements CareRepository {
     });
   }
 
-  public async updateFeedingAttribution(
-    slotKey: string,
+  public async updateFeedingAttributionById(
+    id: string,
     caregiverId: string,
   ): Promise<FeedingLogRecord | null> {
     return this.mutex.runExclusive(async () => {
@@ -401,7 +426,7 @@ export class MemoryCareRepository implements CareRepository {
         return null;
       }
       const idx = store.feedingLogs.findIndex(
-        (row) => row.slotKey === slotKey && row.undoneAtIso === null,
+        (row) => row.id === id && row.undoneAtIso === null,
       );
       if (idx < 0) {
         return null;

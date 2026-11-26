@@ -49,7 +49,7 @@ describe("API integration: cron/tick security, escalations, and push health", ()
     expect(tampered.status).toBe(401);
   });
 
-  it("[AC-025][AC-029] Mark Fed cancels pending tiers and Undo re-arms unfired tiers", async () => {
+  it("[AC-025][AC-029] Reaching dailyMealGoal cancels pending check-ins and Undo re-arms unfired check-ins", async () => {
     // Subscribe helper, family, owner via real API
     for (const [caregiverId, platform] of [
       ["ate", "android_pwa"],
@@ -92,35 +92,40 @@ describe("API integration: cron/tick security, escalations, and push health", ()
     expect(harness.push.sent).toHaveLength(1);
     harness.push.reset();
 
-    // T+0 -> Helper fires
-    harness.clock.setIso(getSlotScheduledAt("2026-11-20", 10, 0).toISOString());
+    // Check-in at 20:00 PHT with 0/3 meals -> Helper + Owner fire (2 pushes)
+    harness.clock.setIso(getSlotScheduledAt("2026-11-20", 20, 0).toISOString());
     expect((await callCron({ tick: 1 })).status).toBe(200);
-    expect(harness.push.sent).toHaveLength(1);
+    expect(harness.push.sent).toHaveLength(2);
 
-    // Mark Fed at 10:05 AM -> cancels T20/T45/T120
-    harness.clock.setIso(getSlotScheduledAt("2026-11-20", 10, 5).toISOString());
-    await postMealFeed(
-      await harness.authedRequest("/api/meals/feed", {
-        method: "POST",
-        body: JSON.stringify({ period: "AM", caregiverId: "ate" }),
-      }),
-    );
+    // Log 3 meals at 20:05 PHT -> cancels +60m Owner Escalation
+    harness.clock.setIso(getSlotScheduledAt("2026-11-20", 20, 5).toISOString());
+    let thirdLogId = "";
+    for (let i = 1; i <= 3; i++) {
+      const feedRes = await postMealFeed(
+        await harness.authedRequest("/api/meals/feed", {
+          method: "POST",
+          body: JSON.stringify({ caregiverId: "ate" }),
+        }),
+      );
+      const feedBody = await feedRes.json();
+      thirdLogId = feedBody.record.id;
+    }
 
-    // Tick at 10:25 -> nothing fires while fed
-    harness.clock.setIso(getSlotScheduledAt("2026-11-20", 10, 25).toISOString());
+    // Tick at 21:05 -> nothing fires while goal (3/3) is met
+    harness.clock.setIso(getSlotScheduledAt("2026-11-20", 21, 5).toISOString());
     await callCron({ tick: 2 });
-    expect(harness.push.sent).toHaveLength(1);
+    expect(harness.push.sent).toHaveLength(2);
 
-    // Undo at 10:26 -> re-arms unfired T20/T45/T120 without refiring already-sent T0
-    harness.clock.setIso(getSlotScheduledAt("2026-11-20", 10, 26).toISOString());
+    // Undo 3rd meal at 21:06 -> re-arms unfired OWNER_ESCALATION without refiring REMINDER
+    harness.clock.setIso(getSlotScheduledAt("2026-11-20", 21, 6).toISOString());
     await postMealUndo(
       await harness.authedRequest("/api/meals/undo", {
         method: "POST",
-        body: JSON.stringify({ slotKey: "2026-11-20:AM" }),
+        body: JSON.stringify({ logId: thirdLogId }),
       }),
     );
     await callCron({ tick: 3 });
-    expect(harness.push.sent).toHaveLength(2); // T20 fired (not T0!)
-    expect(harness.push.sent[1].payload.notification.title).toContain("Did Maki eat");
+    expect(harness.push.sent).toHaveLength(3); // OWNER_ESCALATION fired (not REMINDER)
+    expect(harness.push.sent[2].payload.notification.title).toContain("Meals Short");
   });
 });

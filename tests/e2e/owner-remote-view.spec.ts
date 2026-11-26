@@ -53,22 +53,18 @@ test.describe("Owner Remote View: 14-Day History, Push Health, and Messenger Nud
       name: "14-Day Care History",
     });
     const historyTable = historySection.getByRole("table");
-    const amRowCells = historyTable
-      .getByRole("row", { name: /AM Meal/i })
+    const mealsRowCells = historyTable
+      .getByRole("row", { name: /^Meals/i })
       .getByRole("button");
-    await expect(amRowCells).toHaveCount(14);
-
-    const midRowCells = historyTable
-      .getByRole("row", { name: /Midday Meal/i })
-      .getByRole("button");
-    await expect(midRowCells).toHaveCount(14);
+    await expect(mealsRowCells).toHaveCount(14);
 
     for (const dateKey of expected14Days) {
-      await expect(page.getByTestId(`history-cell-${dateKey}-am`)).toBeVisible();
-      await expect(page.getByTestId(`history-cell-${dateKey}-mid`)).toBeVisible();
+      await expect(page.getByTestId(`history-cell-${dateKey}-meals`)).toBeVisible();
     }
-    await expect(page.getByTestId("history-cell-2026-04-30-am")).toHaveCount(0);
-    await expect(page.getByTestId("history-cell-2026-05-01-am")).toHaveCount(0);
+    await expect(page.getByTestId("history-cell-2026-04-30-meals")).toHaveCount(0);
+    await expect(page.getByTestId("history-cell-2026-05-01-meals")).toHaveCount(0);
+
+    await expect(page.getByTestId("cron-health-status")).toBeVisible();
 
     // Push Health card flags revoked Helper alerts off
     const pushHealth = page.getByRole("region", {

@@ -7,17 +7,13 @@ import {
 } from "./auth";
 import { PUSH_TEMPLATES, UI_COPY } from "./copy";
 import {
-  MEAL_ESCALATION_TIERS,
-  type MealEscalationTier,
-  getMealSchedule,
-  getNotificationTemplateForMealTier,
-  makeSlotKey,
-  mealDispatchKey,
-  mealSkipDispatchKey,
+  MEAL_CHECKIN_STAGES,
+  MEAL_ESCALATION_DELAY_MINUTES,
+  mealCheckinDispatchKey,
+  mealCheckinSkipKey,
 } from "./domain";
 import {
   clampToQuietHours,
-  formatManilaHourMinuteLabel,
   getManilaDateKey,
   getManilaIsoWeekKey,
   getManilaParts,
@@ -26,7 +22,6 @@ import {
 import type {
   CareRepository,
   CaregiverRole,
-  FeedingPeriod,
   PushSubscriptionRecord,
 } from "./types";
 
@@ -317,33 +312,33 @@ export async function sendOwnerAlertEmail(params: {
   });
 }
 
-export async function markMealTiersSkipped(
+export async function markMealCheckinSkipped(
   repo: CareRepository,
-  slotKey: string,
+  dateKey: string,
   nowIso: string,
 ): Promise<void> {
-  for (const tier of MEAL_ESCALATION_TIERS) {
+  for (const stage of MEAL_CHECKIN_STAGES) {
     const alreadySent = await repo.hasNotificationDispatch(
-      mealDispatchKey(slotKey, tier),
+      mealCheckinDispatchKey(dateKey, stage),
     );
     if (!alreadySent) {
       await repo.claimNotificationDispatch({
-        dispatchKey: mealSkipDispatchKey(slotKey, tier),
-        channel: "web_push",
-        targetScope: tier,
+        dispatchKey: mealCheckinSkipKey(dateKey, stage),
+        channel: stage === "OWNER_EMAIL" ? "email" : "web_push",
+        targetScope: stage,
         status: "skipped_done",
-        metaJson: { slotKey, tier },
+        metaJson: { dateKey, stage },
         createdAtIso: nowIso,
       });
     }
   }
 }
 
-export async function rearmMealTiers(
+export async function rearmMealCheckin(
   repo: CareRepository,
-  slotKey: string,
+  dateKey: string,
 ): Promise<void> {
-  await repo.clearDispatchesWithPrefix(`meal-skip:${slotKey}:`);
+  await repo.clearDispatchesWithPrefix(`meal-checkin-skip:${dateKey}:`);
 }
 
 export interface CronTickResult {
@@ -359,11 +354,7 @@ export async function runCronEscalations(params: {
 }): Promise<CronTickResult> {
   const { repo, now, baseUrl } = params;
   const nowIso = now.toISOString();
-  const settings = await repo.getSettings();
-  const caregivers = await repo.listCaregivers();
-  const helperName =
-    caregivers.find((c) => c.role === "helper" && c.isActive)?.displayName ??
-    "Ate";
+  const settings = await repo.updateSettings({ lastCronTickAtIso: nowIso });
 
   const todayDateKey = getManilaDateKey(now);
   const householdPath = getServerHouseholdPath(settings);
@@ -377,99 +368,104 @@ export async function runCronEscalations(params: {
   let dispatchedCount = 0;
   let emailsSent = 0;
 
-  // 1. Meal Escalations for today's Manila slots (AM, MID, and PM)
-  const evaluateMealSlot = async (period: FeedingPeriod): Promise<void> => {
-    const slotKey = makeSlotKey(todayDateKey, period);
-    const activeFeeding = await repo.getActiveFeedingBySlot(slotKey);
-    if (activeFeeding !== null) {
-      return;
-    }
+  // 1. Daily Meal Shortfall Check-in + 60m Owner Escalation
+  const todayFeedings = await repo.listActiveFeedingsByDate(todayDateKey);
+  const mealCount = todayFeedings.length;
+  const mealTarget = Math.max(1, settings.dailyMealGoal);
 
-    const { hour, minute } = getMealSchedule(settings, period);
-    const scheduledAt = getSlotScheduledAt(todayDateKey, hour, minute);
-    const diffMs = now.getTime() - scheduledAt.getTime();
-    if (diffMs < 0) {
-      return;
-    }
-    const diffMinutes = Math.floor(diffMs / 60_000);
-    const timeLabel = formatManilaHourMinuteLabel(hour, minute);
-
-    const tiersToCheck: Array<{
-      tier: MealEscalationTier;
-      minMinutes: number;
-      roles: CaregiverRole[];
-    }> = [
-      { tier: "T0_HELPER", minMinutes: 0, roles: ["helper"] },
-      { tier: "T20_HELPER", minMinutes: 20, roles: ["helper"] },
-      { tier: "T45_FAMILY_OWNER", minMinutes: 45, roles: ["family", "owner"] },
-      { tier: "T120_OWNER", minMinutes: 120, roles: ["owner"] },
-    ];
-
-    for (const item of tiersToCheck) {
-      if (diffMinutes < item.minMinutes) {
-        continue;
-      }
-      const key = mealDispatchKey(slotKey, item.tier);
-      const claimed = await repo.claimNotificationDispatch({
-        dispatchKey: key,
+  if (mealCount < mealTarget) {
+    const reminderAt = getSlotScheduledAt(
+      todayDateKey,
+      settings.mealReminderHour,
+      settings.mealReminderMinute,
+    );
+    const diffMs = now.getTime() - reminderAt.getTime();
+    if (diffMs >= 0) {
+      const diffMinutes = Math.floor(diffMs / 60_000);
+      const reminderKey = mealCheckinDispatchKey(todayDateKey, "REMINDER");
+      const claimedReminder = await repo.claimNotificationDispatch({
+        dispatchKey: reminderKey,
         channel: "web_push",
-        targetScope: item.roles.join(","),
+        targetScope: "helper,owner",
         status: "sent",
-        metaJson: { slotKey, tier: item.tier, diffMinutes },
+        metaJson: { dateKey: todayDateKey, mealCount, mealTarget },
         createdAtIso: nowIso,
       });
-      if (claimed) {
-        const template = getNotificationTemplateForMealTier({
-          tier: item.tier,
-          timeLabel,
-          helperName,
-          minutesLate: diffMinutes,
-        });
+      if (claimedReminder) {
+        const template = PUSH_TEMPLATES.mealShortfallCheckIn(
+          mealCount,
+          mealTarget,
+        );
         await sendPushToRoles({
           repo,
-          roles: item.roles,
+          roles: ["helper", "owner"],
           title: template.title,
           body: template.body,
-          navigate:
-            item.tier === "T120_OWNER" ? ownerNavigate : caregiverNavigate,
+          navigate: caregiverNavigate,
           urgency: "high",
           TTL: 1800,
           now,
         });
         dispatchedCount += 1;
+      }
 
-        if (item.tier === "T120_OWNER") {
-          const emailAddress =
-            settings.ownerEmail || process.env.OWNER_ALERT_EMAIL || "";
-          if (emailAddress) {
-            const emailKey = `meal:${slotKey}:T120_OWNER_EMAIL`;
-            const claimedEmail = await repo.claimNotificationDispatch({
-              dispatchKey: emailKey,
-              channel: "email",
-              targetScope: "owner",
-              status: "sent",
-              metaJson: { slotKey, emailAddress },
-              createdAtIso: nowIso,
+      if (diffMinutes >= MEAL_ESCALATION_DELAY_MINUTES) {
+        const escalationKey = mealCheckinDispatchKey(
+          todayDateKey,
+          "OWNER_ESCALATION",
+        );
+        const claimedEscalation = await repo.claimNotificationDispatch({
+          dispatchKey: escalationKey,
+          channel: "web_push",
+          targetScope: "owner",
+          status: "sent",
+          metaJson: { dateKey: todayDateKey, mealCount, mealTarget, diffMinutes },
+          createdAtIso: nowIso,
+        });
+        const escalationTemplate = PUSH_TEMPLATES.mealShortfallOwnerEscalation(
+          mealCount,
+          mealTarget,
+        );
+        if (claimedEscalation) {
+          await sendPushToRoles({
+            repo,
+            roles: ["owner"],
+            title: escalationTemplate.title,
+            body: escalationTemplate.body,
+            navigate: ownerNavigate,
+            urgency: "high",
+            TTL: 1800,
+            now,
+          });
+          dispatchedCount += 1;
+        }
+
+        const emailAddress =
+          settings.ownerEmail || process.env.OWNER_ALERT_EMAIL || "";
+        if (emailAddress) {
+          const emailKey = mealCheckinDispatchKey(todayDateKey, "OWNER_EMAIL");
+          const claimedEmail = await repo.claimNotificationDispatch({
+            dispatchKey: emailKey,
+            channel: "email",
+            targetScope: "owner",
+            status: "sent",
+            metaJson: { dateKey: todayDateKey, mealCount, mealTarget, emailAddress },
+            createdAtIso: nowIso,
+          });
+          if (claimedEmail) {
+            const emailRes = await sendOwnerAlertEmail({
+              to: emailAddress,
+              subject: escalationTemplate.title,
+              text: `${escalationTemplate.body}\n\nOpen Maki Care: ${ownerEmailUrl}`,
             });
-            if (claimedEmail) {
-              const emailRes = await sendOwnerAlertEmail({
-                to: emailAddress,
-                subject: template.title,
-                text: `${template.body}\n\nOpen Maki Care: ${ownerEmailUrl}`,
-              });
-              if (emailRes.ok) {
-                emailsSent += 1;
-              }
+            if (emailRes.ok) {
+              emailsSent += 1;
             }
           }
         }
       }
     }
-  };
-
-  await evaluateMealSlot("AM");
-  await evaluateMealSlot("MID");
-  await evaluateMealSlot("PM");
+  }
 
   // 2. Litter Escalations (Day+2 Helper clamped to Quiet Hours; Day+3 Owner immediate)
   const litterEvents = await repo.listCareEventsByType("LITTER_CLEAN", 1);

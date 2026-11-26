@@ -139,6 +139,12 @@ function mapSettingsRow(
     midMealMinute: row.midMealMinute,
     pmMealHour: row.pmMealHour,
     pmMealMinute: row.pmMealMinute,
+    dailyMealGoal: row.dailyMealGoal,
+    mealReminderHour: row.mealReminderHour,
+    mealReminderMinute: row.mealReminderMinute,
+    lastCronTickAtIso: row.lastCronTickAt
+      ? row.lastCronTickAt.toISOString()
+      : null,
     litterIntervalHours: row.litterIntervalHours,
     weeklyPlayGoal: row.weeklyPlayGoal,
     ownerEmail: row.ownerEmail,
@@ -174,6 +180,18 @@ export class PostgresCareRepository implements CareRepository {
         await db.execute(
           sql`ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS mid_meal_minute integer NOT NULL DEFAULT 0`,
         );
+        await db.execute(
+          sql`ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS daily_meal_goal integer NOT NULL DEFAULT 3`,
+        );
+        await db.execute(
+          sql`ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS meal_reminder_hour integer NOT NULL DEFAULT 20`,
+        );
+        await db.execute(
+          sql`ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS meal_reminder_minute integer NOT NULL DEFAULT 0`,
+        );
+        await db.execute(
+          sql`ALTER TABLE household_settings ADD COLUMN IF NOT EXISTS last_cron_tick_at timestamptz`,
+        );
         const initial = createInitialCareStore();
         for (const cg of SEEDED_CAREGIVERS) {
           await db
@@ -200,6 +218,10 @@ export class PostgresCareRepository implements CareRepository {
             midMealMinute: initial.settings.midMealMinute,
             pmMealHour: initial.settings.pmMealHour,
             pmMealMinute: initial.settings.pmMealMinute,
+            dailyMealGoal: initial.settings.dailyMealGoal,
+            mealReminderHour: initial.settings.mealReminderHour,
+            mealReminderMinute: initial.settings.mealReminderMinute,
+            lastCronTickAt: null,
             litterIntervalHours: initial.settings.litterIntervalHours,
             weeklyPlayGoal: initial.settings.weeklyPlayGoal,
             ownerEmail: initial.settings.ownerEmail,
@@ -373,6 +395,20 @@ export class PostgresCareRepository implements CareRepository {
     if (patch.pmMealHour !== undefined) updateValues.pmMealHour = patch.pmMealHour;
     if (patch.pmMealMinute !== undefined)
       updateValues.pmMealMinute = patch.pmMealMinute;
+    if (patch.dailyMealGoal !== undefined) {
+      updateValues.dailyMealGoal = patch.dailyMealGoal;
+    }
+    if (patch.mealReminderHour !== undefined) {
+      updateValues.mealReminderHour = patch.mealReminderHour;
+    }
+    if (patch.mealReminderMinute !== undefined) {
+      updateValues.mealReminderMinute = patch.mealReminderMinute;
+    }
+    if (patch.lastCronTickAtIso !== undefined) {
+      updateValues.lastCronTickAt = patch.lastCronTickAtIso
+        ? new Date(patch.lastCronTickAtIso)
+        : null;
+    }
     if (patch.litterIntervalHours !== undefined) {
       updateValues.litterIntervalHours = patch.litterIntervalHours;
     }
@@ -398,18 +434,35 @@ export class PostgresCareRepository implements CareRepository {
     return mapSettingsRow(rows[0]);
   }
 
-  public async getActiveFeedingBySlot(
-    slotKey: string,
-  ): Promise<FeedingLogRecord | null> {
+  public async listActiveFeedingsByDate(
+    serviceDate: string,
+  ): Promise<FeedingLogRecord[]> {
     const db = await this.ensureSeeded();
     const rows = await db
       .select()
       .from(schema.feedingLogs)
       .where(
         and(
-          eq(schema.feedingLogs.slotKey, slotKey),
+          eq(schema.feedingLogs.serviceDate, serviceDate),
           isNull(schema.feedingLogs.undoneAt),
         ),
+      );
+    return rows
+      .map(mapFeedingRow)
+      .sort(
+        (a, b) =>
+          new Date(a.completedAtIso).getTime() -
+          new Date(b.completedAtIso).getTime(),
+      );
+  }
+
+  public async getFeedingById(id: string): Promise<FeedingLogRecord | null> {
+    const db = await this.ensureSeeded();
+    const rows = await db
+      .select()
+      .from(schema.feedingLogs)
+      .where(
+        and(eq(schema.feedingLogs.id, id), isNull(schema.feedingLogs.undoneAt)),
       )
       .limit(1);
     return rows[0] ? mapFeedingRow(rows[0]) : null;
@@ -430,7 +483,13 @@ export class PostgresCareRepository implements CareRepository {
           lte(schema.feedingLogs.serviceDate, endDateKey),
         ),
       );
-    return rows.map(mapFeedingRow);
+    return rows
+      .map(mapFeedingRow)
+      .sort(
+        (a, b) =>
+          new Date(a.completedAtIso).getTime() -
+          new Date(b.completedAtIso).getTime(),
+      );
   }
 
   public async logFeedingAtomic(input: {
@@ -465,7 +524,17 @@ export class PostgresCareRepository implements CareRepository {
       return { alreadyFed: false, record, completedBy };
     }
 
-    const existing = await this.getActiveFeedingBySlot(input.slotKey);
+    const existingRows = await db
+      .select()
+      .from(schema.feedingLogs)
+      .where(
+        and(
+          eq(schema.feedingLogs.slotKey, input.slotKey),
+          isNull(schema.feedingLogs.undoneAt),
+        ),
+      )
+      .limit(1);
+    const existing = existingRows[0] ? mapFeedingRow(existingRows[0]) : null;
     if (!existing) {
       throw new Error(`Concurrent feeding conflict on ${input.slotKey}`);
     }
@@ -475,8 +544,8 @@ export class PostgresCareRepository implements CareRepository {
     return { alreadyFed: true, record: existing, completedBy };
   }
 
-  public async undoFeedingBySlot(
-    slotKey: string,
+  public async undoFeedingById(
+    id: string,
     undoneAtIso: string,
   ): Promise<FeedingLogRecord | null> {
     const db = await this.ensureSeeded();
@@ -484,17 +553,14 @@ export class PostgresCareRepository implements CareRepository {
       .update(schema.feedingLogs)
       .set({ undoneAt: new Date(undoneAtIso) })
       .where(
-        and(
-          eq(schema.feedingLogs.slotKey, slotKey),
-          isNull(schema.feedingLogs.undoneAt),
-        ),
+        and(eq(schema.feedingLogs.id, id), isNull(schema.feedingLogs.undoneAt)),
       )
       .returning();
     return rows[0] ? mapFeedingRow(rows[0]) : null;
   }
 
-  public async updateFeedingAttribution(
-    slotKey: string,
+  public async updateFeedingAttributionById(
+    id: string,
     caregiverId: string,
   ): Promise<FeedingLogRecord | null> {
     const db = await this.ensureSeeded();
@@ -502,10 +568,7 @@ export class PostgresCareRepository implements CareRepository {
       .update(schema.feedingLogs)
       .set({ completedById: caregiverId })
       .where(
-        and(
-          eq(schema.feedingLogs.slotKey, slotKey),
-          isNull(schema.feedingLogs.undoneAt),
-        ),
+        and(eq(schema.feedingLogs.id, id), isNull(schema.feedingLogs.undoneAt)),
       )
       .returning();
     return rows[0] ? mapFeedingRow(rows[0]) : null;

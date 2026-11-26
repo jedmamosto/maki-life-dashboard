@@ -65,13 +65,11 @@ Deploy the app, then open `https://<your-domain>/api/health` and confirm HTTP `2
 
 1. Open Upstash Console -> QStash -> Signing Keys.
 2. Copy `QSTASH_CURRENT_SIGNING_KEY` and `QSTASH_NEXT_SIGNING_KEY` into Vercel env vars, then redeploy.
-3. Create 3 QStash schedules that send `POST` requests to `https://<your-domain>/api/cron/tick`:
+3. Create a QStash schedule that sends `POST` requests to `https://<your-domain>/api/cron/tick`:
 
 | Cron Expression | Purpose |
 | :--- | :--- |
-| `CRON_TZ=Asia/Manila 0,20,45 10,14,19 * * *` | Runs 10:00 AM, 2:00 PM, and 7:00 PM meal due (`T+0m`), `+20m`, and `+45m` checks. |
-| `CRON_TZ=Asia/Manila 0 12,16,21 * * *` | Runs `T+120m` urgent owner push and Resend email escalations. |
-| `CRON_TZ=Asia/Manila 0 * * * *` | Runs hourly litter 48h/72h checks plus Wed 17:00 and Sat 11:00 play checks. |
+| `CRON_TZ=Asia/Manila 0 * * * *` | Runs hourly to evaluate the configurable daily meal shortfall check-in (`mealReminderTime`) + `+60m` owner email, litter 48h/72h checks, and Wed/Sat play nudges, while recording `lastCronTickAt` for Owner View health diagnostics. |
 
 Match the schedule URL host with `NEXT_PUBLIC_APP_URL` because `/api/cron/tick` verifies `upstash-signature` against `${NEXT_PUBLIC_APP_URL}/api/cron/tick`.
 

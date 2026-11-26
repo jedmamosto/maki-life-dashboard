@@ -2,7 +2,6 @@ import { getCareRepository } from "@/db";
 import {
   buildDashboardSnapshot,
   buildOwnerHistory,
-  makeSlotKey,
 } from "./domain";
 import {
   addManilaDays,
@@ -64,9 +63,7 @@ export async function getDashboardSnapshot(
   const [
     caregivers,
     settings,
-    amLog,
-    midLog,
-    pmLog,
+    todayFeedings,
     litterEvents,
     supplies,
     weekEvents,
@@ -74,9 +71,7 @@ export async function getDashboardSnapshot(
   ] = await Promise.all([
     repo.listCaregivers(),
     repo.getSettings(),
-    repo.getActiveFeedingBySlot(makeSlotKey(todayDateKey, "AM")),
-    repo.getActiveFeedingBySlot(makeSlotKey(todayDateKey, "MID")),
-    repo.getActiveFeedingBySlot(makeSlotKey(todayDateKey, "PM")),
+    repo.listActiveFeedingsByDate(todayDateKey),
     repo.listCareEventsByType("LITTER_CLEAN"),
     repo.listSupplies(),
     repo.listCareEventsByWeek(isoWeekKey),
@@ -88,9 +83,7 @@ export async function getDashboardSnapshot(
     baseUrl: effectiveBaseUrl,
     caregivers,
     settings,
-    amLog,
-    midLog,
-    pmLog,
+    todayFeedings,
     litterEvents,
     supplies,
     weekEvents,

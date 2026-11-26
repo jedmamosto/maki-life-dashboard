@@ -69,12 +69,11 @@ describe("CEFR A2 copy compliance and zero-emoji scan", () => {
   it("[AC-035] keeps all UI_COPY and PUSH_TEMPLATES free of banned words and <= 20 words/sentence", () => {
     const uiStaticStrings = collectStaticStrings(UI_COPY);
     const uiFunctionStrings = [
-      UI_COPY.meals.upcomingBody("10:00 AM"),
-      UI_COPY.meals.overdueBody(45, "Ate"),
-      UI_COPY.meals.doneBody("Ate", "10:05 AM"),
-      UI_COPY.meals.earlyWindowError("10:00 AM"),
-      UI_COPY.meals.alreadyFedBody("Ate", "10:05 AM"),
-      UI_COPY.meals.savedToast("10:05 AM"),
+      UI_COPY.meals.emptyBody(3),
+      UI_COPY.meals.progressBody(1, 3),
+      UI_COPY.meals.goalMetBody(3),
+      UI_COPY.meals.overdueBody(1, 3, "Ate"),
+      UI_COPY.meals.savedToast("10:05 AM", 1, 3),
       UI_COPY.litter.upcomingBody("Yesterday, 2:00 PM", "Tomorrow, 2:00 PM"),
       UI_COPY.litter.overdueBody(24),
       UI_COPY.supplies.itemName("CAT_FOOD"),
@@ -86,10 +85,8 @@ describe("CEFR A2 copy compliance and zero-emoji scan", () => {
     ];
 
     const pushStrings = [
-      PUSH_TEMPLATES.mealDueHelper("10:00 AM"),
-      PUSH_TEMPLATES.mealSelfCheckHelper("10:00 AM"),
-      PUSH_TEMPLATES.mealEscalateFamily("10:00 AM", "Ate"),
-      PUSH_TEMPLATES.mealEscalateOwner("10:00 AM", 120),
+      PUSH_TEMPLATES.mealShortfallCheckIn(1, 3),
+      PUSH_TEMPLATES.mealShortfallOwnerEscalation(1, 3),
       PUSH_TEMPLATES.litterDueHelper(),
       PUSH_TEMPLATES.litterEscalateOwner(),
       PUSH_TEMPLATES.supplyOwnerAlert("Cat Food", "LOW"),

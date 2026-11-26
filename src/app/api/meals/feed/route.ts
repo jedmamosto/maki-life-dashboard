@@ -1,40 +1,22 @@
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCareRepository } from "@/db";
-import { UI_COPY } from "@/lib/copy";
 import {
   getAppBaseUrl,
   getDashboardSnapshot,
   getEffectiveNow,
 } from "@/lib/dashboard-service";
-import {
-  getMealSchedule,
-  makeSlotKey,
-  parseSlotKey,
-  resolveCaregiver,
-} from "@/lib/domain";
-import { markMealTiersSkipped } from "@/lib/notifications";
-import {
-  formatManilaTimeLabel,
-  getManilaDateKey,
-  getSlotScheduledAt,
-  isWithinEarlyFeedWindow,
-} from "@/lib/timezone";
+import { makeMealLogSlotKey, resolveCaregiver } from "@/lib/domain";
+import { markMealCheckinSkipped } from "@/lib/notifications";
+import { getManilaDateKey } from "@/lib/timezone";
 import { parseJsonBody, problemResponse, requireHouseholdAuth } from "@/app/api/_shared";
 
 const FeedMealSchema = z
   .object({
-    period: z.enum(["AM", "MID", "PM"]).optional(),
-    slotKey: z.string().min(1).optional(),
-    serviceDate: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .optional(),
     caregiverId: z.string().min(1).optional(),
     actorId: z.string().min(1).optional(),
-  })
-  .refine((data) => Boolean(data.period || data.slotKey), {
-    message: "Either period or slotKey is required.",
+    idempotencyKey: z.string().min(1).optional(),
   })
   .refine((data) => Boolean(data.caregiverId || data.actorId), {
     message: "Either caregiverId or actorId is required.",
@@ -55,30 +37,6 @@ export async function POST(request: Request): Promise<NextResponse> {
   const todayDateKey = getManilaDateKey(now);
   const repo = getCareRepository();
 
-  let serviceDate = parsed.data.serviceDate ?? todayDateKey;
-  let period = parsed.data.period;
-
-  if (parsed.data.slotKey) {
-    const slot = parseSlotKey(parsed.data.slotKey);
-    if (!slot) {
-      return problemResponse(400, "Invalid Slot Key", "Invalid meal slot key.");
-    }
-    serviceDate = slot.serviceDate;
-    period = slot.period;
-  }
-
-  if (!period) {
-    return problemResponse(400, "Invalid Period", "Meal period is required.");
-  }
-
-  if (serviceDate !== todayDateKey) {
-    return problemResponse(
-      422,
-      "Invalid Service Date",
-      "You can only log meals for today.",
-    );
-  }
-
   const actorKey = parsed.data.caregiverId ?? parsed.data.actorId ?? "";
   const caregiver = await resolveCaregiver(repo, actorKey);
   if (!caregiver || !caregiver.isActive) {
@@ -89,30 +47,27 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  const settings = await repo.getSettings();
-  const { hour, minute } = getMealSchedule(settings, period);
-  const scheduledAt = getSlotScheduledAt(serviceDate, hour, minute);
+  const idempotencyKey = parsed.data.idempotencyKey ?? crypto.randomUUID();
+  const slotKey = makeMealLogSlotKey(todayDateKey, idempotencyKey);
+  const nowIso = now.toISOString();
 
-  if (!isWithinEarlyFeedWindow(now, scheduledAt, 90)) {
-    return problemResponse(
-      422,
-      "Too Early",
-      UI_COPY.meals.earlyWindowError(formatManilaTimeLabel(scheduledAt)),
-    );
-  }
-
-  const slotKey = makeSlotKey(serviceDate, period);
   const result = await repo.logFeedingAtomic({
     slotKey,
-    serviceDate,
-    period,
-    dueAtIso: scheduledAt.toISOString(),
+    serviceDate: todayDateKey,
+    period: "COUNT",
+    dueAtIso: nowIso,
     completedById: caregiver.id,
-    completedAtIso: now.toISOString(),
+    completedAtIso: nowIso,
   });
 
   if (!result.alreadyFed) {
-    await markMealTiersSkipped(repo, slotKey, now.toISOString());
+    const [settings, todayFeedings] = await Promise.all([
+      repo.getSettings(),
+      repo.listActiveFeedingsByDate(todayDateKey),
+    ]);
+    if (todayFeedings.length >= Math.max(1, settings.dailyMealGoal)) {
+      await markMealCheckinSkipped(repo, todayDateKey, nowIso);
+    }
   }
 
   const snapshot = await getDashboardSnapshot(now, getAppBaseUrl(request.url));

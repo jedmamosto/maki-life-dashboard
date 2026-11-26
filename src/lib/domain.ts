@@ -1,7 +1,6 @@
-import { PUSH_TEMPLATES, UI_COPY, buildMessengerNudgeText } from "./copy";
+import { UI_COPY, buildMessengerNudgeText } from "./copy";
 import {
   formatManilaDateLabel,
-  formatManilaHourMinuteLabel,
   formatManilaIso,
   formatManilaRelativeLabel,
   formatManilaShortDate,
@@ -12,7 +11,6 @@ import {
   getManilaIsoWeekKey,
   getManilaWeekdayFromDateKey,
   getSlotScheduledAt,
-  isWithinEarlyFeedWindow,
 } from "./timezone";
 import type {
   AvatarColorKey,
@@ -20,15 +18,15 @@ import type {
   CareRepository,
   Caregiver,
   CaregiverRole,
+  DailyMealsView,
   DashboardSnapshot,
   DayComplianceCell,
   EscalationStage,
   FeedingLogRecord,
-  FeedingPeriod,
-  FeedingSlotView,
   HouseholdSettingsRecord,
   HouseholdSettingsView,
   LitterStatusView,
+  MealLogEntryView,
   OwnerHistoryResponse,
   PushHealthDevice,
   PushHealthSummary,
@@ -99,6 +97,10 @@ export const DEFAULT_SETTINGS: Omit<HouseholdSettingsRecord, "updatedAtIso"> = {
   midMealMinute: 0,
   pmMealHour: 19,
   pmMealMinute: 0,
+  dailyMealGoal: 3,
+  mealReminderHour: 20,
+  mealReminderMinute: 0,
+  lastCronTickAtIso: null,
   litterIntervalHours: 48,
   weeklyPlayGoal: 3,
   ownerEmail: "",
@@ -106,59 +108,35 @@ export const DEFAULT_SETTINGS: Omit<HouseholdSettingsRecord, "updatedAtIso"> = {
   activeTokenHash: null,
 };
 
-export const MEAL_ESCALATION_TIERS = [
-  "T0_HELPER",
-  "T20_HELPER",
-  "T45_FAMILY_OWNER",
-  "T120_OWNER",
+export const MEAL_CHECKIN_STAGES = [
+  "REMINDER",
+  "OWNER_ESCALATION",
+  "OWNER_EMAIL",
 ] as const;
 
-export type MealEscalationTier = (typeof MEAL_ESCALATION_TIERS)[number];
+export type MealCheckinStage = (typeof MEAL_CHECKIN_STAGES)[number];
 
-export const MEAL_OVERDUE_THRESHOLD_MINUTES = 45;
+export const MEAL_ESCALATION_DELAY_MINUTES = 60;
 
-export function mealDispatchKey(
-  slotKey: string,
-  tier: MealEscalationTier,
+export function mealCheckinDispatchKey(
+  dateKey: string,
+  stage: MealCheckinStage,
 ): string {
-  return `meal:${slotKey}:${tier}`;
+  return `meal-checkin:${dateKey}:${stage}`;
 }
 
-export function mealSkipDispatchKey(
-  slotKey: string,
-  tier: MealEscalationTier,
+export function mealCheckinSkipKey(
+  dateKey: string,
+  stage: MealCheckinStage,
 ): string {
-  return `meal-skip:${slotKey}:${tier}`;
+  return `meal-checkin-skip:${dateKey}:${stage}`;
 }
 
-export function makeSlotKey(serviceDate: string, period: FeedingPeriod): string {
-  return `${serviceDate}:${period}`;
-}
-
-export function getMealSchedule(
-  settings: HouseholdSettingsRecord,
-  period: FeedingPeriod,
-): { hour: number; minute: number } {
-  if (period === "AM") {
-    return { hour: settings.amMealHour, minute: settings.amMealMinute };
-  }
-  if (period === "MID") {
-    return { hour: settings.midMealHour, minute: settings.midMealMinute };
-  }
-  return { hour: settings.pmMealHour, minute: settings.pmMealMinute };
-}
-
-export function parseSlotKey(
-  slotKey: string,
-): { serviceDate: string; period: FeedingPeriod } | null {
-  const match = /^(\d{4}-\d{2}-\d{2}):(AM|MID|PM)$/.exec(slotKey);
-  if (!match) {
-    return null;
-  }
-  return {
-    serviceDate: match[1],
-    period: match[2] as FeedingPeriod,
-  };
+export function makeMealLogSlotKey(
+  serviceDate: string,
+  idempotencyKey: string,
+): string {
+  return `${serviceDate}:LOG:${idempotencyKey}`;
 }
 
 export async function resolveCaregiver(
@@ -172,74 +150,63 @@ export async function resolveCaregiver(
   return repo.getCaregiverBySlug(idOrSlug);
 }
 
-export function computeMealSlotView(input: {
-  period: FeedingPeriod;
+export function computeDailyMealsView(input: {
   serviceDate: string;
   todayDateKey: string;
   now: Date;
   settings: HouseholdSettingsRecord;
-  activeLog: FeedingLogRecord | null;
+  activeLogs: FeedingLogRecord[];
   caregiversById: Map<string, Caregiver>;
-}): FeedingSlotView {
-  const { hour, minute } = getMealSchedule(input.settings, input.period);
-  const scheduledAt = getSlotScheduledAt(input.serviceDate, hour, minute);
-  const scheduledTimeLabel = formatManilaHourMinuteLabel(hour, minute);
-  const label = `${scheduledTimeLabel} Meal`;
-  const slotKey = makeSlotKey(input.serviceDate, input.period);
+}): DailyMealsView {
+  const target = Math.max(1, input.settings.dailyMealGoal);
+  const sorted = [...input.activeLogs]
+    .filter((log) => log.undoneAtIso === null)
+    .sort(
+      (a, b) =>
+        new Date(a.completedAtIso).getTime() -
+        new Date(b.completedAtIso).getTime(),
+    );
 
-  if (input.activeLog && input.activeLog.undoneAtIso === null) {
-    const completedBy =
-      input.caregiversById.get(input.activeLog.completedById) ?? null;
-    const completedAtDate = new Date(input.activeLog.completedAtIso);
-    const isSunday = getManilaWeekdayFromDateKey(input.serviceDate) === 0;
-    return {
-      slotKey,
-      serviceDate: input.serviceDate,
-      period: input.period,
-      label,
-      scheduledTimeLabel,
-      dueAtIso: scheduledAt.toISOString(),
-      state: "DONE",
-      canLogEarly: false,
-      minutesOverdue: 0,
-      completedBy,
-      completedAtIso: input.activeLog.completedAtIso,
-      completedTimeLabel: formatManilaTimeLabel(completedAtDate),
-      canUndo: input.serviceDate === input.todayDateKey,
-      showFoodStockPiggyback: input.period === "PM" && isSunday,
-    };
-  }
+  const count = sorted.length;
+  const isGoalMet = count >= target;
+  const progressPercent = Math.min(100, Math.round((count / target) * 100));
+  const reminderAt = getSlotScheduledAt(
+    input.serviceDate,
+    input.settings.mealReminderHour,
+    input.settings.mealReminderMinute,
+  );
+  const diffMinutes = Math.floor(
+    (input.now.getTime() - reminderAt.getTime()) / 60_000,
+  );
 
-  const diffMs = input.now.getTime() - scheduledAt.getTime();
-  const diffMinutes = Math.floor(diffMs / 60_000);
   let state: TaskVisualState = "UPCOMING";
-  let minutesOverdue = 0;
-
-  if (diffMs >= 0) {
-    if (diffMinutes >= MEAL_OVERDUE_THRESHOLD_MINUTES) {
-      state = "OVERDUE";
-      minutesOverdue = diffMinutes;
-    } else {
-      state = "DUE_NOW";
-    }
+  if (isGoalMet) {
+    state = "DONE";
+  } else if (diffMinutes >= MEAL_ESCALATION_DELAY_MINUTES) {
+    state = "OVERDUE";
+  } else if (diffMinutes >= 0) {
+    state = "DUE_NOW";
   }
+
+  const entries: MealLogEntryView[] = sorted.map((log) => ({
+    id: log.id,
+    completedBy: input.caregiversById.get(log.completedById) ?? null,
+    completedAtIso: log.completedAtIso,
+    completedTimeLabel: formatManilaTimeLabel(new Date(log.completedAtIso)),
+    canUndo: log.serviceDate === input.todayDateKey,
+  }));
+
+  const isSunday = getManilaWeekdayFromDateKey(input.serviceDate) === 0;
 
   return {
-    slotKey,
     serviceDate: input.serviceDate,
-    period: input.period,
-    label,
-    scheduledTimeLabel,
-    dueAtIso: scheduledAt.toISOString(),
+    count,
+    target,
+    isGoalMet,
+    progressPercent,
     state,
-    canLogEarly:
-      state === "UPCOMING" && isWithinEarlyFeedWindow(input.now, scheduledAt, 90),
-    minutesOverdue,
-    completedBy: null,
-    completedAtIso: null,
-    completedTimeLabel: null,
-    canUndo: false,
-    showFoodStockPiggyback: false,
+    entries,
+    showFoodStockPiggyback: isSunday && isGoalMet,
   };
 }
 
@@ -381,26 +348,19 @@ export function computeWeeklyPlayView(input: {
 }
 
 export function computeSurvivability(input: {
-  meals: { am: FeedingSlotView; mid: FeedingSlotView; pm: FeedingSlotView };
+  meals: DailyMealsView;
   litter: LitterStatusView;
   supplies: { food: SupplyView; litter: SupplyView };
 }): SurvivabilitySummary {
   let score = 100;
-  let completedCoreCount = 0;
-  const totalCoreCount = 6;
+  let completedCoreCount = Math.min(input.meals.count, input.meals.target);
+  const totalCoreCount = input.meals.target + 3;
 
-  const applyMeal = (slot: FeedingSlotView): void => {
-    if (slot.state === "DONE") {
-      completedCoreCount += 1;
-    } else if (slot.state === "DUE_NOW") {
-      score -= 15;
-    } else if (slot.state === "OVERDUE") {
-      score -= 35;
-    }
-  };
-  applyMeal(input.meals.am);
-  applyMeal(input.meals.mid);
-  applyMeal(input.meals.pm);
+  if (input.meals.state === "DUE_NOW") {
+    score -= 15;
+  } else if (input.meals.state === "OVERDUE") {
+    score -= 35;
+  }
 
   if (input.litter.state === "DONE" || input.litter.state === "UPCOMING") {
     completedCoreCount += 1;
@@ -425,17 +385,13 @@ export function computeSurvivability(input: {
   score = Math.max(0, Math.min(100, score));
 
   const hasOverdue =
-    input.meals.am.state === "OVERDUE" ||
-    input.meals.mid.state === "OVERDUE" ||
-    input.meals.pm.state === "OVERDUE" ||
+    input.meals.state === "OVERDUE" ||
     input.litter.state === "OVERDUE" ||
     input.supplies.food.level === "EMPTY" ||
     input.supplies.litter.level === "EMPTY";
 
   const hasAttention =
-    input.meals.am.state === "DUE_NOW" ||
-    input.meals.mid.state === "DUE_NOW" ||
-    input.meals.pm.state === "DUE_NOW" ||
+    input.meals.state === "DUE_NOW" ||
     input.litter.state === "DUE_NOW" ||
     input.supplies.food.level === "LOW" ||
     input.supplies.litter.level === "LOW";
@@ -451,13 +407,9 @@ export function computeSurvivability(input: {
   } else if (hasAttention) {
     status = "ATTENTION";
     headline = UI_COPY.survivability.dueTitle;
-    subtext = "A meal, litter clean, or low supply needs care today.";
-  } else if (input.meals.am.state === "UPCOMING") {
-    subtext = `${UI_COPY.survivability.nextMealPrefix} ${input.meals.am.scheduledTimeLabel}`;
-  } else if (input.meals.mid.state === "UPCOMING") {
-    subtext = `${UI_COPY.survivability.nextMealPrefix} ${input.meals.mid.scheduledTimeLabel}`;
-  } else if (input.meals.pm.state === "UPCOMING") {
-    subtext = `${UI_COPY.survivability.nextMealPrefix} ${input.meals.pm.scheduledTimeLabel}`;
+    subtext = "A meal check-in, litter clean, or low supply needs care today.";
+  } else if (!input.meals.isGoalMet) {
+    subtext = `${UI_COPY.survivability.mealsProgressPrefix} ${input.meals.count} of ${input.meals.target}`;
   }
 
   return {
@@ -474,47 +426,30 @@ export function computeEscalationStage(input: {
   now: Date;
   todayDateKey: string;
   settings: HouseholdSettingsRecord;
-  amLog: FeedingLogRecord | null;
-  midLog: FeedingLogRecord | null;
-  pmLog: FeedingLogRecord | null;
+  todayFeedings: FeedingLogRecord[];
 }): EscalationStage {
-  const stages: EscalationStage[] = [
-    "NONE",
-    "T0_HELPER",
-    "T20_HELPER",
-    "T45_FAMILY_OWNER",
-    "T120_OWNER",
-  ];
-  let highestIdx = 0;
+  const activeCount = input.todayFeedings.filter(
+    (log) => log.undoneAtIso === null,
+  ).length;
+  const target = Math.max(1, input.settings.dailyMealGoal);
+  if (activeCount >= target) {
+    return "NONE";
+  }
 
-  const evaluateSlot = (
-    period: FeedingPeriod,
-    activeLog: FeedingLogRecord | null,
-  ): void => {
-    if (activeLog && activeLog.undoneAtIso === null) {
-      return;
-    }
-    const { hour, minute } = getMealSchedule(input.settings, period);
-    const scheduledAt = getSlotScheduledAt(input.todayDateKey, hour, minute);
-    const diffMs = input.now.getTime() - scheduledAt.getTime();
-    if (diffMs < 0) {
-      return;
-    }
-    const diffMin = Math.floor(diffMs / 60_000);
-    let idx = 1;
-    if (diffMin >= 120) idx = 4;
-    else if (diffMin >= 45) idx = 3;
-    else if (diffMin >= 20) idx = 2;
-    if (idx > highestIdx) {
-      highestIdx = idx;
-    }
-  };
-
-  evaluateSlot("AM", input.amLog);
-  evaluateSlot("MID", input.midLog);
-  evaluateSlot("PM", input.pmLog);
-
-  return stages[highestIdx];
+  const reminderAt = getSlotScheduledAt(
+    input.todayDateKey,
+    input.settings.mealReminderHour,
+    input.settings.mealReminderMinute,
+  );
+  const diffMs = input.now.getTime() - reminderAt.getTime();
+  if (diffMs < 0) {
+    return "NONE";
+  }
+  const diffMin = Math.floor(diffMs / 60_000);
+  if (diffMin >= MEAL_ESCALATION_DELAY_MINUTES) {
+    return "OWNER_ESCALATED";
+  }
+  return "REMINDER_SENT";
 }
 
 export function buildPushHealthSummary(
@@ -578,9 +513,9 @@ export function buildSettingsView(
 ): HouseholdSettingsView {
   return {
     householdTimezone: settings.householdTimezone,
-    amMealTime: `${String(settings.amMealHour).padStart(2, "0")}:${String(settings.amMealMinute).padStart(2, "0")}`,
-    midMealTime: `${String(settings.midMealHour).padStart(2, "0")}:${String(settings.midMealMinute).padStart(2, "0")}`,
-    pmMealTime: `${String(settings.pmMealHour).padStart(2, "0")}:${String(settings.pmMealMinute).padStart(2, "0")}`,
+    dailyMealGoal: settings.dailyMealGoal,
+    mealReminderTime: `${String(settings.mealReminderHour).padStart(2, "0")}:${String(settings.mealReminderMinute).padStart(2, "0")}`,
+    lastCronTickAtIso: settings.lastCronTickAtIso,
     litterIntervalHours: settings.litterIntervalHours,
     weeklyPlayGoal: settings.weeklyPlayGoal,
     ownerEmail: settings.ownerEmail,
@@ -589,20 +524,12 @@ export function buildSettingsView(
 }
 
 function summarizePendingTask(input: {
-  am: FeedingSlotView;
-  mid: FeedingSlotView;
-  pm: FeedingSlotView;
+  meals: DailyMealsView;
   litter: LitterStatusView;
   supplies: { food: SupplyView; litter: SupplyView };
 }): string {
-  if (input.am.state === "OVERDUE" || input.am.state === "DUE_NOW") {
-    return `${input.am.label} is waiting`;
-  }
-  if (input.mid.state === "OVERDUE" || input.mid.state === "DUE_NOW") {
-    return `${input.mid.label} is waiting`;
-  }
-  if (input.pm.state === "OVERDUE" || input.pm.state === "DUE_NOW") {
-    return `${input.pm.label} is waiting`;
+  if (!input.meals.isGoalMet) {
+    return `Meals today are ${input.meals.count} of ${input.meals.target}`;
   }
   if (input.litter.state === "OVERDUE" || input.litter.state === "DUE_NOW") {
     return "Litter box needs cleaning";
@@ -624,9 +551,7 @@ export function buildDashboardSnapshot(input: {
   baseUrl: string;
   caregivers: Caregiver[];
   settings: HouseholdSettingsRecord;
-  amLog: FeedingLogRecord | null;
-  midLog: FeedingLogRecord | null;
-  pmLog: FeedingLogRecord | null;
+  todayFeedings: FeedingLogRecord[];
   litterEvents: CareEventRecord[];
   supplies: SupplyRecord[];
   weekEvents: CareEventRecord[];
@@ -637,31 +562,12 @@ export function buildDashboardSnapshot(input: {
   );
   const todayDateKey = getManilaDateKey(input.now);
 
-  const am = computeMealSlotView({
-    period: "AM",
+  const meals = computeDailyMealsView({
     serviceDate: todayDateKey,
     todayDateKey,
     now: input.now,
     settings: input.settings,
-    activeLog: input.amLog,
-    caregiversById,
-  });
-  const mid = computeMealSlotView({
-    period: "MID",
-    serviceDate: todayDateKey,
-    todayDateKey,
-    now: input.now,
-    settings: input.settings,
-    activeLog: input.midLog,
-    caregiversById,
-  });
-  const pm = computeMealSlotView({
-    period: "PM",
-    serviceDate: todayDateKey,
-    todayDateKey,
-    now: input.now,
-    settings: input.settings,
-    activeLog: input.pmLog,
+    activeLogs: input.todayFeedings,
     caregiversById,
   });
 
@@ -699,7 +605,7 @@ export function buildDashboardSnapshot(input: {
   });
 
   const survivability = computeSurvivability({
-    meals: { am, mid, pm },
+    meals,
     litter,
     supplies: suppliesView,
   });
@@ -708,9 +614,7 @@ export function buildDashboardSnapshot(input: {
     now: input.now,
     todayDateKey,
     settings: input.settings,
-    amLog: input.amLog,
-    midLog: input.midLog,
-    pmLog: input.pmLog,
+    todayFeedings: input.todayFeedings,
   });
 
   const pushHealth = buildPushHealthSummary(
@@ -719,9 +623,7 @@ export function buildDashboardSnapshot(input: {
   );
 
   const taskSummary = summarizePendingTask({
-    am,
-    mid,
-    pm,
+    meals,
     litter,
     supplies: suppliesView,
   });
@@ -733,7 +635,7 @@ export function buildDashboardSnapshot(input: {
     manilaTimeLabel: formatManilaTimeLabel(input.now),
     isoWeekKey: weeklyPlay.isoWeekKey,
     survivability,
-    meals: { am, mid, pm },
+    meals,
     litter,
     supplies: suppliesView,
     weeklyPlay,
@@ -762,12 +664,22 @@ export function buildOwnerHistory(input: {
   );
   const todayDateKey = getManilaDateKey(input.now);
   const dateKeys = getManilaDateKeysBack(input.now, 14);
+  const mealGoal = Math.max(1, input.settings.dailyMealGoal);
 
-  const activeFeedingsBySlot = new Map<string, FeedingLogRecord>();
+  const feedingsByDateKey = new Map<string, FeedingLogRecord[]>();
   for (const log of input.feedingLogs) {
     if (log.undoneAtIso === null) {
-      activeFeedingsBySlot.set(log.slotKey, log);
+      const arr = feedingsByDateKey.get(log.serviceDate) ?? [];
+      arr.push(log);
+      feedingsByDateKey.set(log.serviceDate, arr);
     }
+  }
+  for (const arr of feedingsByDateKey.values()) {
+    arr.sort(
+      (a, b) =>
+        new Date(a.completedAtIso).getTime() -
+        new Date(b.completedAtIso).getTime(),
+    );
   }
 
   const allLitterCleans = input.careEvents
@@ -785,56 +697,35 @@ export function buildOwnerHistory(input: {
     eventsByDateKey.set(dk, arr);
   }
 
-  let onTimeSlots = 0;
-  let totalEvaluatedSlots = 0;
-
-  const evaluateMealCell = (
-    dateKey: string,
-    period: FeedingPeriod,
-  ): {
-    status: "ON_TIME" | "LATE" | "MISSED" | "UPCOMING";
-    fedBy: string | null;
-    fedAt: string | null;
-  } => {
-    const slotKey = makeSlotKey(dateKey, period);
-    const { hour, minute } = getMealSchedule(input.settings, period);
-    const scheduledAt = getSlotScheduledAt(dateKey, hour, minute);
-    const overdueCutoffMs =
-      scheduledAt.getTime() + MEAL_OVERDUE_THRESHOLD_MINUTES * 60_000;
-    const log = activeFeedingsBySlot.get(slotKey);
-
-    if (log) {
-      totalEvaluatedSlots += 1;
-      const completedDate = new Date(log.completedAtIso);
-      const isOnTime = completedDate.getTime() <= overdueCutoffMs;
-      if (isOnTime) {
-        onTimeSlots += 1;
-      }
-      const actor = caregiversById.get(log.completedById);
-      return {
-        status: isOnTime ? "ON_TIME" : "LATE",
-        fedBy: actor?.displayName ?? null,
-        fedAt: formatManilaTimeLabel(completedDate),
-      };
-    }
-
-    if (dateKey < todayDateKey) {
-      totalEvaluatedSlots += 1;
-      return { status: "MISSED", fedBy: null, fedAt: null };
-    }
-
-    if (input.now.getTime() >= overdueCutoffMs) {
-      totalEvaluatedSlots += 1;
-      return { status: "LATE", fedBy: null, fedAt: null };
-    }
-
-    return { status: "UPCOMING", fedBy: null, fedAt: null };
-  };
+  let goalHitDays = 0;
+  let evaluatedDays = 0;
+  const todayReminderAt = getSlotScheduledAt(
+    todayDateKey,
+    input.settings.mealReminderHour,
+    input.settings.mealReminderMinute,
+  );
 
   const days: DayComplianceCell[] = dateKeys.map((dateKey) => {
-    const am = evaluateMealCell(dateKey, "AM");
-    const mid = evaluateMealCell(dateKey, "MID");
-    const pm = evaluateMealCell(dateKey, "PM");
+    const dayFeedings = feedingsByDateKey.get(dateKey) ?? [];
+    const mealCount = dayFeedings.length;
+
+    let mealStatus: DayComplianceCell["mealStatus"] = "UPCOMING";
+    if (mealCount >= mealGoal) {
+      mealStatus = "ON_TIME";
+      evaluatedDays += 1;
+      goalHitDays += 1;
+    } else if (dateKey < todayDateKey) {
+      evaluatedDays += 1;
+      mealStatus = mealCount > 0 ? "PARTIAL" : "MISSED";
+    } else if (mealCount > 0) {
+      mealStatus = "PARTIAL";
+      if (input.now.getTime() >= todayReminderAt.getTime()) {
+        evaluatedDays += 1;
+      }
+    } else if (input.now.getTime() >= todayReminderAt.getTime()) {
+      mealStatus = "MISSED";
+      evaluatedDays += 1;
+    }
 
     const dayEvents = eventsByDateKey.get(dateKey) ?? [];
     const dayCleans = dayEvents.filter((e) => e.eventType === "LITTER_CLEAN");
@@ -883,18 +774,16 @@ export function buildOwnerHistory(input: {
       dateKey,
       shortLabel: formatManilaShortDate(dateKey),
       weekdayLabel: formatManilaWeekday(dateKey),
-      amStatus: am.status,
-      midStatus: mid.status,
-      pmStatus: pm.status,
+      mealCount,
+      mealGoal,
+      mealStatus,
       litterStatus,
       playCount: dayPlays.length,
       details: {
-        amFedBy: am.fedBy,
-        amFedAt: am.fedAt,
-        midFedBy: mid.fedBy,
-        midFedAt: mid.fedAt,
-        pmFedBy: pm.fedBy,
-        pmFedAt: pm.fedAt,
+        meals: dayFeedings.map((log) => ({
+          fedBy: caregiversById.get(log.completedById)?.displayName ?? "Caregiver",
+          fedAt: formatManilaTimeLabel(new Date(log.completedAtIso)),
+        })),
         litterBy,
         litterAt,
         playBy: dayPlays.map(
@@ -904,36 +793,21 @@ export function buildOwnerHistory(input: {
     };
   });
 
-  const onTimePercent =
-    totalEvaluatedSlots === 0
-      ? 100
-      : Math.round((onTimeSlots / totalEvaluatedSlots) * 100);
+  const mealGoalHitPercent =
+    evaluatedDays === 0 ? 100 : Math.round((goalHitDays / evaluatedDays) * 100);
 
   let coreStreakDays = 0;
   for (let i = days.length - 1; i >= 0; i -= 1) {
     const cell = days[i];
     const isToday = cell.dateKey === todayDateKey;
-    if (
-      isToday &&
-      (cell.amStatus === "UPCOMING" ||
-        cell.midStatus === "UPCOMING" ||
-        cell.pmStatus === "UPCOMING")
-    ) {
-      if (
-        cell.amStatus === "MISSED" ||
-        cell.midStatus === "MISSED" ||
-        cell.pmStatus === "MISSED" ||
-        cell.litterStatus === "MISSED"
-      ) {
+    if (isToday && cell.mealStatus === "UPCOMING") {
+      if (cell.litterStatus === "MISSED") {
         break;
       }
       continue;
     }
     const dayHealthy =
-      (cell.amStatus === "ON_TIME" || cell.amStatus === "LATE") &&
-      (cell.midStatus === "ON_TIME" || cell.midStatus === "LATE") &&
-      (cell.pmStatus === "ON_TIME" || cell.pmStatus === "LATE") &&
-      cell.litterStatus !== "MISSED";
+      cell.mealCount >= cell.mealGoal && cell.litterStatus !== "MISSED";
     if (!dayHealthy) {
       break;
     }
@@ -942,27 +816,20 @@ export function buildOwnerHistory(input: {
 
   const timelineItems: Array<TodayTimelineItem & { sortMs: number }> = [];
 
-  for (const period of ["AM", "MID", "PM"] as const) {
-    const log = activeFeedingsBySlot.get(makeSlotKey(todayDateKey, period));
-    if (log) {
-      const occurred = new Date(log.completedAtIso);
-      const actor = caregiversById.get(log.completedById) ?? null;
-      timelineItems.push({
-        id: `feed-${log.id}`,
-        timeLabel: formatManilaTimeLabel(occurred),
-        title:
-          period === "AM"
-            ? UI_COPY.meals.amTitle
-            : period === "MID"
-              ? UI_COPY.meals.midTitle
-              : UI_COPY.meals.pmTitle,
-        actor,
-        badge: UI_COPY.meals.states.DONE,
-        tone: "sage",
-        sortMs: occurred.getTime(),
-      });
-    }
-  }
+  const todayFeedings = feedingsByDateKey.get(todayDateKey) ?? [];
+  todayFeedings.forEach((log, idx) => {
+    const occurred = new Date(log.completedAtIso);
+    const actor = caregiversById.get(log.completedById) ?? null;
+    timelineItems.push({
+      id: `feed-${log.id}`,
+      timeLabel: formatManilaTimeLabel(occurred),
+      title: `Meal #${idx + 1}`,
+      actor,
+      badge: "Fed",
+      tone: "sage",
+      sortMs: occurred.getTime(),
+    });
+  });
 
   const todayEvents = eventsByDateKey.get(todayDateKey) ?? [];
   for (const ev of todayEvents) {
@@ -1026,33 +893,9 @@ export function buildOwnerHistory(input: {
 
   return {
     days,
-    onTimePercent,
+    mealGoalHitPercent,
     coreStreakDays,
     pushHealth: buildPushHealthSummary(input.caregivers, input.pushSubscriptions),
     todayTimeline,
   };
-}
-
-export function getNotificationTemplateForMealTier(params: {
-  tier: MealEscalationTier;
-  timeLabel: string;
-  helperName: string;
-  minutesLate: number;
-}): { title: string; body: string } {
-  switch (params.tier) {
-    case "T0_HELPER":
-      return PUSH_TEMPLATES.mealDueHelper(params.timeLabel);
-    case "T20_HELPER":
-      return PUSH_TEMPLATES.mealSelfCheckHelper(params.timeLabel);
-    case "T45_FAMILY_OWNER":
-      return PUSH_TEMPLATES.mealEscalateFamily(
-        params.timeLabel,
-        params.helperName,
-      );
-    case "T120_OWNER":
-      return PUSH_TEMPLATES.mealEscalateOwner(
-        params.timeLabel,
-        params.minutesLate,
-      );
-  }
 }

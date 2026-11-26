@@ -127,6 +127,13 @@ export const householdSettings = pgTable("household_settings", {
   midMealMinute: integer("mid_meal_minute").notNull().default(0),
   pmMealHour: integer("pm_meal_hour").notNull(),
   pmMealMinute: integer("pm_meal_minute").notNull(),
+  dailyMealGoal: integer("daily_meal_goal").notNull().default(3),
+  mealReminderHour: integer("meal_reminder_hour").notNull().default(20),
+  mealReminderMinute: integer("meal_reminder_minute").notNull().default(0),
+  lastCronTickAt: timestamp("last_cron_tick_at", {
+    withTimezone: true,
+    mode: "date",
+  }),
   litterIntervalHours: integer("litter_interval_hours").notNull(),
   weeklyPlayGoal: integer("weekly_play_goal").notNull(),
   ownerEmail: text("owner_email").notNull(),

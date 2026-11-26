@@ -113,6 +113,8 @@ function isDashboardSnapshot(value: unknown): value is DashboardSnapshot {
     typeof value.manilaNowIso === "string" &&
     isRecord(value.survivability) &&
     isRecord(value.meals) &&
+    typeof value.meals.count === "number" &&
+    Array.isArray(value.meals.entries) &&
     isRecord(value.litter) &&
     isRecord(value.supplies) &&
     isRecord(value.weeklyPlay) &&

@@ -42,9 +42,29 @@ function makeFullSupplies(): SupplyRecord[] {
   ];
 }
 
+function makeFeedLog(
+  serviceDate: string,
+  hour: number,
+  minute: number,
+  idx: number,
+  completedById = "ate",
+): FeedingLogRecord {
+  const iso = getSlotScheduledAt(serviceDate, hour, minute).toISOString();
+  return {
+    id: `feed-${serviceDate}-${idx}`,
+    slotKey: `${serviceDate}:LOG:${idx}`,
+    serviceDate,
+    period: "COUNT",
+    dueAtIso: iso,
+    completedById,
+    completedAtIso: iso,
+    undoneAtIso: null,
+  };
+}
+
 describe("domain engine (survivability, piggybacks, escalation stage, 14-day history)", () => {
   it("[AC-021] calculates Survivability strictly from core care; weekly play 0/3 never lowers score", () => {
-    const now = getSlotScheduledAt("2026-11-20", 8, 0); // 08:00 AM PHT (before 10 AM meal)
+    const now = getSlotScheduledAt("2026-11-20", 8, 0); // 08:00 AM PHT (before 20:00 check-in)
     const recentClean: CareEventRecord = {
       id: "lc-1",
       eventType: "LITTER_CLEAN",
@@ -59,9 +79,7 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
       baseUrl: "http://localhost:3000",
       caregivers: [...DEFAULT_CAREGIVERS],
       settings: makeSettings(),
-      amLog: null,
-      midLog: null,
-      pmLog: null,
+      todayFeedings: [],
       litterEvents: [recentClean],
       supplies: makeFullSupplies(),
       weekEvents: [],
@@ -72,10 +90,10 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
     expect(snapNoPlay.survivability.status).toBe("SAFE");
     expect(snapNoPlay.survivability.score).toBe(100);
     expect(snapNoPlay.survivability.totalCoreCount).toBe(6);
-    expect(snapNoPlay.meals.mid.scheduledTimeLabel).toBe("2:00 PM");
+    expect(snapNoPlay.meals.target).toBe(3);
 
-    // Late AM meal (10:50 AM PHT = 50m late) -> OVERDUE even with 3/3 weekly play
-    const overdueNow = getSlotScheduledAt("2026-11-20", 10, 50);
+    // Past check-in + 60m (21:05 PHT) with < 3 meals -> OVERDUE even with 3/3 weekly play
+    const overdueNow = getSlotScheduledAt("2026-11-20", 21, 5);
     const threePlays: CareEventRecord[] = [1, 2, 3].map((n) => ({
       id: `p-${n}`,
       eventType: "OUT_OF_ROOM",
@@ -90,9 +108,7 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
       baseUrl: "http://localhost:3000",
       caregivers: [...DEFAULT_CAREGIVERS],
       settings: makeSettings(),
-      amLog: null,
-      midLog: null,
-      pmLog: null,
+      todayFeedings: [makeFeedLog("2026-11-20", 10, 0, 1)],
       litterEvents: [recentClean],
       supplies: makeFullSupplies(),
       weekEvents: threePlays,
@@ -112,19 +128,14 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
     expect(directNoPlay.score).toBe(snapWithPlay.survivability.score);
   });
 
-  it("[AC-016][AC-018] activates Sunday PM food piggyback and every-3rd-clean litter piggyback", () => {
+  it("[AC-016][AC-018] activates Sunday goal-met food piggyback and every-3rd-clean litter piggyback", () => {
     // 2026-11-22 is Sunday in Manila
     const sundayEvening = getSlotScheduledAt("2026-11-22", 19, 10);
-    const pmLog: FeedingLogRecord = {
-      id: "feed-sun-pm",
-      slotKey: "2026-11-22:PM",
-      serviceDate: "2026-11-22",
-      period: "PM",
-      dueAtIso: getSlotScheduledAt("2026-11-22", 19, 0).toISOString(),
-      completedById: "ate",
-      completedAtIso: getSlotScheduledAt("2026-11-22", 19, 5).toISOString(),
-      undoneAtIso: null,
-    };
+    const sundayFeedings = [
+      makeFeedLog("2026-11-22", 9, 30, 1),
+      makeFeedLog("2026-11-22", 14, 0, 2),
+      makeFeedLog("2026-11-22", 19, 5, 3),
+    ];
 
     const threeLitterCleans: CareEventRecord[] = [1, 2, 3].map((n) => ({
       id: `lc-${n}`,
@@ -140,108 +151,97 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
       baseUrl: "http://localhost:3000",
       caregivers: [...DEFAULT_CAREGIVERS],
       settings: makeSettings(),
-      amLog: null,
-      midLog: null,
-      pmLog,
+      todayFeedings: sundayFeedings,
       litterEvents: threeLitterCleans,
       supplies: makeFullSupplies(),
       weekEvents: [],
       pushSubscriptions: [],
     });
 
-    expect(snap.meals.pm.showFoodStockPiggyback).toBe(true);
-    expect(snap.meals.mid.showFoodStockPiggyback).toBe(false);
-    expect(snap.meals.am.showFoodStockPiggyback).toBe(false);
+    expect(snap.meals.isGoalMet).toBe(true);
+    expect(snap.meals.showFoodStockPiggyback).toBe(true);
     expect(snap.litter.totalCleansCount).toBe(3);
     expect(snap.litter.showLitterStockPiggyback).toBe(true);
 
-    // 2 litter cleans -> false, weekday PM -> false
+    // Only 2 meals on Sunday -> false; 3 meals on Friday -> false
+    const sundayPartialSnap = buildDashboardSnapshot({
+      now: sundayEvening,
+      baseUrl: "http://localhost:3000",
+      caregivers: [...DEFAULT_CAREGIVERS],
+      settings: makeSettings(),
+      todayFeedings: sundayFeedings.slice(0, 2),
+      litterEvents: threeLitterCleans.slice(0, 2),
+      supplies: makeFullSupplies(),
+      weekEvents: [],
+      pushSubscriptions: [],
+    });
+    expect(sundayPartialSnap.meals.showFoodStockPiggyback).toBe(false);
+    expect(sundayPartialSnap.litter.showLitterStockPiggyback).toBe(false);
+
     const fridayEvening = getSlotScheduledAt("2026-11-20", 19, 10);
     const friSnap = buildDashboardSnapshot({
       now: fridayEvening,
       baseUrl: "http://localhost:3000",
       caregivers: [...DEFAULT_CAREGIVERS],
       settings: makeSettings(),
-      amLog: null,
-      midLog: null,
-      pmLog: {
-        ...pmLog,
-        id: "feed-fri-pm",
-        slotKey: "2026-11-20:PM",
-        serviceDate: "2026-11-20",
-      },
+      todayFeedings: [
+        makeFeedLog("2026-11-20", 9, 30, 1),
+        makeFeedLog("2026-11-20", 14, 0, 2),
+        makeFeedLog("2026-11-20", 19, 5, 3),
+      ],
       litterEvents: threeLitterCleans.slice(0, 2),
       supplies: makeFullSupplies(),
       weekEvents: [],
       pushSubscriptions: [],
     });
-    expect(friSnap.meals.pm.showFoodStockPiggyback).toBe(false);
+    expect(friSnap.meals.showFoodStockPiggyback).toBe(false);
     expect(friSnap.litter.showLitterStockPiggyback).toBe(false);
   });
 
-  it("computes escalationStage across T0, T20, T45, and T120 boundaries", () => {
-    const settings = makeSettings();
+  it("computes escalationStage across check-in reminder and +60m owner escalation boundaries", () => {
+    const settings = makeSettings(); // mealReminderHour=20, mealReminderMinute=0, dailyMealGoal=3
     const args = {
       todayDateKey: "2026-11-20",
       settings,
-      amLog: null,
-      midLog: null,
-      pmLog: null,
+      todayFeedings: [makeFeedLog("2026-11-20", 10, 0, 1)],
     };
 
     expect(
-      computeEscalationStage({ ...args, now: getSlotScheduledAt("2026-11-20", 9, 59) }),
+      computeEscalationStage({ ...args, now: getSlotScheduledAt("2026-11-20", 19, 59) }),
     ).toBe("NONE");
     expect(
-      computeEscalationStage({ ...args, now: getSlotScheduledAt("2026-11-20", 10, 0) }),
-    ).toBe("T0_HELPER");
+      computeEscalationStage({ ...args, now: getSlotScheduledAt("2026-11-20", 20, 0) }),
+    ).toBe("REMINDER_SENT");
     expect(
-      computeEscalationStage({ ...args, now: getSlotScheduledAt("2026-11-20", 10, 20) }),
-    ).toBe("T20_HELPER");
-    expect(
-      computeEscalationStage({ ...args, now: getSlotScheduledAt("2026-11-20", 10, 45) }),
-    ).toBe("T45_FAMILY_OWNER");
-    expect(
-      computeEscalationStage({ ...args, now: getSlotScheduledAt("2026-11-20", 12, 0) }),
-    ).toBe("T120_OWNER");
+      computeEscalationStage({ ...args, now: getSlotScheduledAt("2026-11-20", 21, 0) }),
+    ).toBe("OWNER_ESCALATED");
 
-    // When AM is fed, MID (14:00) drives escalation
-    const amFed: FeedingLogRecord = {
-      id: "f-am",
-      slotKey: "2026-11-20:AM",
-      serviceDate: "2026-11-20",
-      period: "AM",
-      dueAtIso: getSlotScheduledAt("2026-11-20", 10, 0).toISOString(),
-      completedById: "ate",
-      completedAtIso: getSlotScheduledAt("2026-11-20", 10, 0).toISOString(),
-      undoneAtIso: null,
-    };
+    // When daily goal is met, escalationStage is NONE even at 21:30
     expect(
       computeEscalationStage({
-        ...args,
-        amLog: amFed,
-        now: getSlotScheduledAt("2026-11-20", 14, 25),
+        todayDateKey: "2026-11-20",
+        settings,
+        todayFeedings: [
+          makeFeedLog("2026-11-20", 10, 0, 1),
+          makeFeedLog("2026-11-20", 14, 0, 2),
+          makeFeedLog("2026-11-20", 19, 0, 3),
+        ],
+        now: getSlotScheduledAt("2026-11-20", 21, 30),
       }),
-    ).toBe("T20_HELPER");
+    ).toBe("NONE");
   });
 
-  it("[AC-030] builds exact 14 Manila calendar day history [today - 13d .. today]", () => {
+  it("[AC-030] builds exact 14 Manila calendar day history [today - 13d .. today] with consolidated meal counts", () => {
     const now = getSlotScheduledAt("2026-11-20", 11, 0);
-    const amToday: FeedingLogRecord = {
-      id: "f-today-am",
-      slotKey: "2026-11-20:AM",
-      serviceDate: "2026-11-20",
-      period: "AM",
-      dueAtIso: getSlotScheduledAt("2026-11-20", 10, 0).toISOString(),
-      completedById: "ate",
-      completedAtIso: getSlotScheduledAt("2026-11-20", 10, 10).toISOString(),
-      undoneAtIso: null,
-    };
+    const todayLogs = [
+      makeFeedLog("2026-11-20", 10, 10, 1, "ate"),
+      makeFeedLog("2026-11-20", 10, 45, 2, "mom"),
+    ];
     const history = buildOwnerHistory({
       now,
       caregivers: [...DEFAULT_CAREGIVERS],
       settings: makeSettings(),
-      feedingLogs: [amToday],
+      feedingLogs: todayLogs,
       careEvents: [],
       supplies: makeFullSupplies(),
       pushSubscriptions: [],
@@ -250,9 +250,10 @@ describe("domain engine (survivability, piggybacks, escalation stage, 14-day his
     expect(history.days).toHaveLength(14);
     expect(history.days[0].dateKey).toBe("2026-11-07");
     expect(history.days[13].dateKey).toBe("2026-11-20");
-    expect(history.days[13].amStatus).toBe("ON_TIME");
-    expect(history.days[13].midStatus).toBe("UPCOMING");
-    expect(history.days[13].pmStatus).toBe("UPCOMING");
-    expect(history.todayTimeline.length).toBeGreaterThanOrEqual(1);
+    expect(history.days[13].mealCount).toBe(2);
+    expect(history.days[13].mealGoal).toBe(3);
+    expect(history.days[13].mealStatus).toBe("PARTIAL");
+    expect(history.days[13].details.meals).toHaveLength(2);
+    expect(history.todayTimeline.length).toBeGreaterThanOrEqual(2);
   });
 });

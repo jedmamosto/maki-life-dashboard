@@ -30,80 +30,97 @@ describe("API integration: care logging, concurrency, undo, supplies, play", () 
     expect(body.timezone).toBe("Asia/Manila");
   });
 
-  it("[AC-010][AC-011][AC-012][AC-015] enforces early feed window, returns 201/200 on concurrent feed, and supports attribution change", async () => {
-    // 08:00 AM PHT is 120 min before 10:00 AM -> 422
-    const earlyReq = await harness.authedRequest("/api/meals/feed", {
+  it("[AC-010][AC-011][AC-012][AC-015] logs timestamped feedings anytime, deduplicates idempotencyKey retries, allows extra meals, and supports attribution change", async () => {
+    // 08:00 AM PHT -> allowed anytime with zero early-feed window lock
+    const req1 = await harness.authedRequest("/api/meals/feed", {
       method: "POST",
-      body: JSON.stringify({ period: "AM", caregiverId: "ate" }),
+      body: JSON.stringify({ caregiverId: "ate", idempotencyKey: "meal-idem-1" }),
     });
-    const earlyRes = await postMealFeed(earlyReq);
-    expect(earlyRes.status).toBe(422);
+    const res1 = await postMealFeed(req1);
+    expect(res1.status).toBe(201);
+    const data1 = await res1.json();
+    expect(data1.alreadyFed).toBe(false);
+    expect(data1.snapshot.meals.count).toBe(1);
+    expect(data1.snapshot.meals.entries).toHaveLength(1);
 
-    // Move clock to exact T-90m (08:30 AM PHT) -> concurrent feed
-    harness.clock.setIso(getSlotScheduledAt("2026-11-20", 8, 30).toISOString());
-    const [req1, req2] = await Promise.all([
-      harness.authedRequest("/api/meals/feed", {
-        method: "POST",
-        body: JSON.stringify({ period: "AM", caregiverId: "ate" }),
-      }),
-      harness.authedRequest("/api/meals/feed", {
-        method: "POST",
-        body: JSON.stringify({ period: "AM", caregiverId: "mom" }),
-      }),
-    ]);
+    // Retrying with same idempotencyKey deduplicates safely (200, count stays 1)
+    const retryReq = await harness.authedRequest("/api/meals/feed", {
+      method: "POST",
+      body: JSON.stringify({ caregiverId: "mom", idempotencyKey: "meal-idem-1" }),
+    });
+    const retryRes = await postMealFeed(retryReq);
+    expect(retryRes.status).toBe(200);
+    const retryData = await retryRes.json();
+    expect(retryData.alreadyFed).toBe(true);
+    expect(retryData.record.id).toBe(data1.record.id);
+    expect(retryData.snapshot.meals.count).toBe(1);
 
-    const [res1, res2] = await Promise.all([postMealFeed(req1), postMealFeed(req2)]);
-    const statuses = [res1.status, res2.status].sort((a, b) => a - b);
-    expect(statuses).toEqual([200, 201]);
+    // Distinct feedings increment count (including beyond dailyMealGoal=3)
+    for (let i = 2; i <= 4; i++) {
+      harness.clock.advanceMinutes(15);
+      const nextRes = await postMealFeed(
+        await harness.authedRequest("/api/meals/feed", {
+          method: "POST",
+          body: JSON.stringify({ caregiverId: "mom", idempotencyKey: `meal-idem-${i}` }),
+        }),
+      );
+      expect(nextRes.status).toBe(201);
+    }
+    const after4 = await (
+      await getDashboard(await harness.authedRequest("/api/dashboard"))
+    ).json();
+    expect(after4.meals.count).toBe(4);
+    expect(after4.meals.isGoalMet).toBe(true);
 
-    const payloads = await Promise.all([res1.json(), res2.json()]);
-    const winnerPayload = payloads.find((p) => p.alreadyFed === false);
-    const loserPayload = payloads.find((p) => p.alreadyFed === true);
-    expect(winnerPayload).toBeDefined();
-    expect(loserPayload).toBeDefined();
-    expect(loserPayload.record.id).toBe(winnerPayload.record.id);
-
-    // Attribution change updates completedBy without creating duplicate log
+    // Attribution change updates completedBy for specific logId without creating duplicate log
     const attrReq = await harness.authedRequest("/api/meals/attribution", {
       method: "PATCH",
-      body: JSON.stringify({ slotKey: "2026-11-20:AM", caregiverId: "dad" }),
+      body: JSON.stringify({ logId: data1.record.id, caregiverId: "dad" }),
     });
     const attrRes = await patchMealAttribution(attrReq);
     expect(attrRes.status).toBe(200);
     const attrData = await attrRes.json();
     expect(attrData.completedBy.slug).toBe("dad");
-    expect(attrData.snapshot.meals.am.completedBy.slug).toBe("dad");
+    expect(attrData.snapshot.meals.entries[0].completedBy.slug).toBe("dad");
+    expect(attrData.snapshot.meals.count).toBe(4);
   });
 
-  it("[AC-013][AC-014] allows same-day meal Undo and rejects prior-day Undo with 422", async () => {
+  it("[AC-013][AC-014] allows same-day meal Undo by logId and rejects prior-day Undo with 422", async () => {
     harness.clock.setIso(getSlotScheduledAt("2026-11-20", 10, 5).toISOString());
-    const feedReq = await harness.authedRequest("/api/meals/feed", {
-      method: "POST",
-      body: JSON.stringify({ period: "AM", caregiverId: "ate" }),
-    });
-    expect((await postMealFeed(feedReq)).status).toBe(201);
+    const feedRes = await postMealFeed(
+      await harness.authedRequest("/api/meals/feed", {
+        method: "POST",
+        body: JSON.stringify({ caregiverId: "ate" }),
+      }),
+    );
+    expect(feedRes.status).toBe(201);
+    const feedBody = await feedRes.json();
+    const logId = feedBody.record.id as string;
 
     const undoReq = await harness.authedRequest("/api/meals/undo", {
       method: "POST",
-      body: JSON.stringify({ slotKey: "2026-11-20:AM" }),
+      body: JSON.stringify({ logId }),
     });
     const undoRes = await postMealUndo(undoReq);
     expect(undoRes.status).toBe(200);
     const undoData = await undoRes.json();
-    expect(undoData.snapshot.meals.am.state).toBe("DUE_NOW");
+    expect(undoData.snapshot.meals.count).toBe(0);
 
     // Re-feed succeeds with 201
-    const refeedReq = await harness.authedRequest("/api/meals/feed", {
-      method: "POST",
-      body: JSON.stringify({ period: "AM", caregiverId: "mom" }),
-    });
-    expect((await postMealFeed(refeedReq)).status).toBe(201);
+    const refeedRes = await postMealFeed(
+      await harness.authedRequest("/api/meals/feed", {
+        method: "POST",
+        body: JSON.stringify({ caregiverId: "mom" }),
+      }),
+    );
+    expect(refeedRes.status).toBe(201);
+    const refeedBody = await refeedRes.json();
 
     // Advance to next Manila day -> prior-day undo MUST return 422
     harness.clock.setIso(getSlotScheduledAt("2026-11-21", 8, 0).toISOString());
     const priorUndoReq = await harness.authedRequest("/api/meals/undo", {
       method: "POST",
-      body: JSON.stringify({ slotKey: "2026-11-20:AM" }),
+      body: JSON.stringify({ logId: refeedBody.record.id }),
     });
     const priorUndoRes = await postMealUndo(priorUndoReq);
     expect(priorUndoRes.status).toBe(422);
@@ -170,28 +187,29 @@ describe("API integration: care logging, concurrency, undo, supplies, play", () 
     expect(dash.weeklyPlay.count).toBe(0);
   });
 
-  it("supports MID (2:00 PM) feed, undo, and default midMealTime in dashboard settings", async () => {
+  it("exposes default dailyMealGoal=3 and mealReminderTime=20:00 in dashboard settings", async () => {
     harness.clock.setIso(getSlotScheduledAt("2026-11-20", 14, 5).toISOString());
     const feedRes = await postMealFeed(
       await harness.authedRequest("/api/meals/feed", {
         method: "POST",
-        body: JSON.stringify({ period: "MID", caregiverId: "ate" }),
+        body: JSON.stringify({ caregiverId: "ate" }),
       }),
     );
     expect(feedRes.status).toBe(201);
     const feedData = await feedRes.json();
-    expect(feedData.snapshot.settings.midMealTime).toBe("14:00");
-    expect(feedData.snapshot.meals.mid.state).toBe("DONE");
-    expect(feedData.snapshot.meals.mid.completedBy.slug).toBe("ate");
+    expect(feedData.snapshot.settings.dailyMealGoal).toBe(3);
+    expect(feedData.snapshot.settings.mealReminderTime).toBe("20:00");
+    expect(feedData.snapshot.meals.count).toBe(1);
+    expect(feedData.snapshot.meals.entries[0].completedBy.slug).toBe("ate");
 
     const undoRes = await postMealUndo(
       await harness.authedRequest("/api/meals/undo", {
         method: "POST",
-        body: JSON.stringify({ period: "MID" }),
+        body: JSON.stringify({ logId: feedData.record.id }),
       }),
     );
     expect(undoRes.status).toBe(200);
     const undoData = await undoRes.json();
-    expect(undoData.snapshot.meals.mid.state).toBe("DUE_NOW");
+    expect(undoData.snapshot.meals.count).toBe(0);
   });
 });
