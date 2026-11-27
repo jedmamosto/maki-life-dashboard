@@ -35,7 +35,7 @@ export function AccessGate({ canRetry = true }: AccessGateProps) {
         <h1 className="font-display text-2xl font-bold tracking-[-0.02em] text-[var(--ink-primary)]">
           {UI_COPY.accessGate.title}
         </h1>
-        <p className="mt-3 text-base text-[var(--ink-secondary)] leading-relaxed">
+        <p className="mx-auto mt-3 max-w-prose text-base text-[var(--ink-secondary)] leading-relaxed">
           {UI_COPY.accessGate.body}
         </p>
         {canRetry ? (

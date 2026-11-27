@@ -57,8 +57,8 @@ const ESCALATION_STEPS: Array<{
   timeTag: string;
   label: string;
 }> = [
-  { stage: "REMINDER_SENT", timeTag: "Check-in", label: "Helper + Owner" },
-  { stage: "OWNER_ESCALATED", timeTag: "+60m", label: "Owner Urgent" },
+  { stage: "REMINDER_SENT", timeTag: "Check-in", label: "Helper + owner" },
+  { stage: "OWNER_ESCALATED", timeTag: "+60m", label: "Owner urgent" },
 ];
 
 const STAGE_ORDER: Record<EscalationStage, number> = {
@@ -116,9 +116,9 @@ function formatPlatformLabel(platform: PushPlatform | null): string {
     case "android_pwa":
       return "Android Chrome";
     case "desktop":
-      return "Desktop Browser";
+      return "Desktop browser";
     default:
-      return "No Device Yet";
+      return "No device yet";
   }
 }
 
@@ -133,7 +133,7 @@ function renderMatrixBadge(
       return {
         cls: "border-[var(--sage-border)] bg-[var(--sage-bg)] text-[var(--sage-strong)]",
         icon: <Check className="h-3.5 w-3.5" aria-hidden="true" />,
-        label: status === "DONE" ? "Done" : "Goal Met",
+        label: status === "DONE" ? "Done" : "Goal met",
       };
     case "PARTIAL":
     case "LATE":
@@ -407,7 +407,7 @@ export function OwnerDashboardView({
             type="button"
             onClick={() => void handleRefresh()}
             disabled={refreshing}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-card)] px-4 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] disabled:opacity-60"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-[var(--bg-card)] px-4 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] disabled:opacity-60 kitchen-transition"
           >
             <RefreshCw
               className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
@@ -470,8 +470,8 @@ export function OwnerDashboardView({
             data-testid="dual-clock-grid"
             className="grid grid-cols-1 sm:grid-cols-2 gap-3"
           >
-            <div className="rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)]/60 p-3.5">
-              <div className="text-xs font-bold uppercase tracking-wide text-[var(--ink-tertiary)]">
+            <div className="rounded-[var(--radius-btn)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)]/60 p-3.5">
+              <div className="text-xs font-semibold text-[var(--ink-tertiary)]">
                 {UI_COPY.ownerView.houseTimeLabel}
               </div>
               <div className="mt-1 font-display text-xl font-extrabold text-[var(--ink-primary)] tabular-nums">
@@ -482,8 +482,8 @@ export function OwnerDashboardView({
               </div>
             </div>
 
-            <div className="rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)]/60 p-3.5">
-              <div className="text-xs font-bold uppercase tracking-wide text-[var(--ink-tertiary)]">
+            <div className="rounded-[var(--radius-btn)] border border-[var(--border-hairline)] bg-[var(--bg-subtle)]/60 p-3.5">
+              <div className="text-xs font-semibold text-[var(--ink-tertiary)]">
                 {UI_COPY.ownerView.localTimeLabel}
               </div>
               <div className="mt-1 font-display text-xl font-extrabold text-[var(--ink-primary)] tabular-nums">
@@ -511,7 +511,7 @@ export function OwnerDashboardView({
                       : "border-[var(--amber-border)] bg-[var(--amber-bg)] text-[var(--amber-strong)]"
                 }`}
               >
-                {activeStageNum === 0 ? "Quiet / On Track" : "Escalation Active"}
+                {activeStageNum === 0 ? "Quiet / on track" : "Escalation active"}
               </span>
             </div>
 
@@ -523,7 +523,7 @@ export function OwnerDashboardView({
                 return (
                   <div
                     key={step.stage}
-                    className={`rounded-[12px] border px-3 py-2.5 ${
+                    className={`rounded-[var(--radius-btn)] border px-3 py-2.5 ${
                       isUrgent
                         ? "border-[var(--coral-border)] bg-[var(--coral-bg)] text-[var(--coral-strong)]"
                         : isReached
@@ -531,7 +531,7 @@ export function OwnerDashboardView({
                           : "border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--ink-tertiary)]"
                     }`}
                   >
-                    <div className="text-[11px] font-bold tabular-nums">
+                    <div className="text-xs font-bold tabular-nums">
                       {step.timeTag}
                     </div>
                     <div className="mt-0.5 text-xs font-semibold">
@@ -548,12 +548,12 @@ export function OwnerDashboardView({
         <section
           aria-label={UI_COPY.ownerView.nudgeCardTitle}
           data-testid="messenger-nudge-card"
-          className="rounded-[16px] border border-[var(--indigo-border)] bg-[var(--indigo-bg)] sunlit-card p-4 sm:p-5 space-y-3"
+          className="rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5 space-y-3"
         >
-          <h2 className="font-display text-lg font-bold text-[var(--indigo-strong)]">
+          <h2 className="font-display text-lg font-bold text-[var(--ink-primary)]">
             {UI_COPY.ownerView.nudgeCardTitle}
           </h2>
-          <p className="rounded-[12px] border border-[var(--indigo-border)] bg-white p-3 text-sm text-[var(--ink-primary)] break-words">
+          <p className="rounded-[var(--radius-btn)] border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3 text-sm text-[var(--ink-primary)] break-words">
             {nudgeText}
           </p>
 
@@ -567,9 +567,9 @@ export function OwnerDashboardView({
                 data-testid="nudge-fallback-textarea"
                 aria-label={UI_COPY.ownerView.nudgeCardTitle}
                 onFocus={(e) => e.currentTarget.select()}
-                className="w-full rounded-[12px] border border-[var(--indigo-text)] bg-white p-3 text-sm text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)]"
+                className="w-full rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-white p-3 text-sm text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
               />
-              <p className="text-xs font-semibold text-[var(--indigo-strong)]">
+              <p className="text-xs font-semibold text-[var(--ink-secondary)]">
                 {UI_COPY.ownerView.clipboardFallbackNote}
               </p>
             </div>
@@ -579,10 +579,10 @@ export function OwnerDashboardView({
             type="button"
             onClick={() => void handleCopyNudge()}
             data-testid="copy-messenger-nudge-cta"
-            className={`inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] px-4 font-display text-base font-bold text-white kitchen-transition sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+            className={`inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] px-4 font-display text-base font-bold text-white kitchen-transition sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
               nudgeCopied
-                ? "bg-[var(--sage-text)] focus-visible:ring-[var(--sage-text)]"
-                : "bg-[var(--indigo-text)] hover:bg-[var(--indigo-strong)] focus-visible:ring-[var(--indigo-text)]"
+                ? "bg-[var(--sage-text)] focus-visible:ring-[var(--ring-focus)]"
+                : "bg-[var(--brand-primary)] hover:bg-[var(--brand-strong)] focus-visible:ring-[var(--ring-focus)]"
             }`}
           >
             {nudgeCopied ? (
@@ -698,9 +698,9 @@ export function OwnerDashboardView({
                 onClick={() => setMobileWindow("last7")}
                 aria-pressed={mobileWindow === "last7"}
                 data-testid="history-toggle-last7"
-                className={`min-h-[44px] rounded-[12px] border px-3 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                className={`min-h-[44px] rounded-[var(--radius-btn)] border px-3 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                   mobileWindow === "last7"
-                    ? "border-[var(--sage-text)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
+                    ? "border-[var(--brand-border)] bg-[var(--brand-bg)] text-[var(--brand-strong)]"
                     : "border-[var(--border-control)] bg-[var(--bg-canvas)] text-[var(--ink-primary)]"
                 }`}
               >
@@ -711,9 +711,9 @@ export function OwnerDashboardView({
                 onClick={() => setMobileWindow("prev7")}
                 aria-pressed={mobileWindow === "prev7"}
                 data-testid="history-toggle-prev7"
-                className={`min-h-[44px] rounded-[12px] border px-3 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                className={`min-h-[44px] rounded-[var(--radius-btn)] border px-3 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                   mobileWindow === "prev7"
-                    ? "border-[var(--sage-text)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
+                    ? "border-[var(--brand-border)] bg-[var(--brand-bg)] text-[var(--brand-strong)]"
                     : "border-[var(--border-control)] bg-[var(--bg-canvas)] text-[var(--ink-primary)]"
                 }`}
               >
@@ -729,7 +729,7 @@ export function OwnerDashboardView({
             >
               <thead>
                 <tr>
-                  <th className="w-12 sm:w-16 text-left text-[11px] sm:text-xs font-bold text-[var(--ink-tertiary)] py-1">
+                  <th className="w-12 sm:w-16 text-left text-[0.6875rem] sm:text-xs font-bold text-[var(--ink-tertiary)] py-1">
                     Care
                   </th>
                   {history.days.map((day, idx) => {
@@ -743,14 +743,14 @@ export function OwnerDashboardView({
                           type="button"
                           onClick={() => setSelectedDateKey(day.dateKey)}
                           aria-pressed={isSelected}
-                          className={`flex min-h-[44px] w-full flex-col items-center justify-center rounded-[8px] border px-0.5 text-[10px] sm:text-[11px] font-bold tabular-nums leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                          className={`flex min-h-[44px] w-full flex-col items-center justify-center rounded-[var(--radius-sm)] border px-0.5 text-[0.625rem] sm:text-[0.6875rem] font-bold tabular-nums leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                             isSelected
-                              ? "border-[var(--indigo-text)] bg-[var(--indigo-bg)] text-[var(--indigo-strong)]"
+                              ? "border-[var(--brand-primary)] bg-[var(--brand-bg)] text-[var(--brand-strong)]"
                               : "border-transparent bg-[var(--bg-subtle)] text-[var(--ink-secondary)] hover:border-[var(--border-control)]"
                           }`}
                         >
                           <span>{day.weekdayLabel}</span>
-                          <span className="text-[9px] sm:text-[10px] font-medium">
+                          <span className="text-[0.625rem] font-medium">
                             {day.shortLabel}
                           </span>
                         </button>
@@ -770,7 +770,7 @@ export function OwnerDashboardView({
                   <tr key={row.key}>
                     <th
                       scope="row"
-                      className="text-left text-[11px] sm:text-xs font-semibold text-[var(--ink-secondary)] pr-1"
+                      className="text-left text-[0.6875rem] sm:text-xs font-semibold text-[var(--ink-secondary)] pr-1"
                     >
                       <span className="sm:hidden">{row.label}</span>
                       <span className="hidden sm:inline">{row.desktopLabel}</span>
@@ -786,7 +786,7 @@ export function OwnerDashboardView({
                               onClick={() => setSelectedDateKey(day.dateKey)}
                               data-testid={`history-cell-${day.dateKey}-meals`}
                               aria-label={`${day.shortLabel} Meals: ${day.mealCount} of ${day.mealGoal} (${badge.label})`}
-                              className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-[8px] border text-[11px] font-bold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${badge.cls}`}
+                              className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-sm)] border text-[0.6875rem] font-bold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${badge.cls}`}
                             >
                               {day.mealCount}/{day.mealGoal}
                             </button>
@@ -803,9 +803,9 @@ export function OwnerDashboardView({
                               onClick={() => setSelectedDateKey(day.dateKey)}
                               data-testid={`history-cell-${day.dateKey}-play`}
                               aria-label={`${day.shortLabel} Play: ${day.playCount}`}
-                              className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-[8px] border text-xs font-bold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)] ${
+                              className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-sm)] border text-xs font-bold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                                 hasPlay
-                                  ? "border-[var(--indigo-border)] bg-[var(--indigo-bg)] text-[var(--indigo-strong)]"
+                                  ? "border-[var(--pink-border)] bg-[var(--pink-bg)] text-[var(--pink-strong)]"
                                   : "border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--ink-tertiary)]"
                               }`}
                             >
@@ -834,7 +834,7 @@ export function OwnerDashboardView({
                             onClick={() => setSelectedDateKey(day.dateKey)}
                             data-testid={`history-cell-${day.dateKey}-litter`}
                             aria-label={`${day.shortLabel} ${row.desktopLabel}: ${badge.label}`}
-                            className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-[8px] border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${badge.cls}`}
+                            className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-[var(--radius-sm)] border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${badge.cls}`}
                           >
                             {badge.icon}
                           </button>
@@ -850,7 +850,7 @@ export function OwnerDashboardView({
           {selectedDay ? (
             <div
               data-testid="day-detail-inspector"
-              className="rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5"
+              className="rounded-[var(--radius-btn)] border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-3.5"
             >
               <div className="font-display text-sm font-bold text-[var(--ink-primary)] tabular-nums">
                 {selectedDay.weekdayLabel}, {selectedDay.shortLabel}
@@ -870,7 +870,7 @@ export function OwnerDashboardView({
                 </div>
                 <div>
                   <dt className="font-bold text-[var(--ink-primary)]">
-                    Litter Box
+                    {UI_COPY.litter.title}
                   </dt>
                   <dd>
                     {selectedDay.details.litterBy
@@ -880,7 +880,7 @@ export function OwnerDashboardView({
                 </div>
                 <div>
                   <dt className="font-bold text-[var(--ink-primary)]">
-                    Out-of-Room Play
+                    {UI_COPY.play.title}
                   </dt>
                   <dd>
                     {selectedDay.details.playBy.length > 0
@@ -897,7 +897,7 @@ export function OwnerDashboardView({
         <section
           aria-label={UI_COPY.ownerView.pushHealthTitle}
           data-testid="push-health-panel"
-          className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5 space-y-4"
+          className="rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5 space-y-4"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -905,9 +905,9 @@ export function OwnerDashboardView({
                 {UI_COPY.ownerView.pushHealthTitle}
               </h2>
               <p className="mt-0.5 text-xs font-medium text-[var(--ink-secondary)] tabular-nums">
-                Helper Devices: {history.pushHealth.activeHelperDevices} •
-                Family Devices: {history.pushHealth.activeFamilyDevices} •
-                Owner Devices: {history.pushHealth.activeOwnerDevices}
+                Helper devices: {history.pushHealth.activeHelperDevices} •
+                Family devices: {history.pushHealth.activeFamilyDevices} •
+                Owner devices: {history.pushHealth.activeOwnerDevices}
               </p>
               <p
                 data-testid="cron-health-status"
@@ -926,7 +926,7 @@ export function OwnerDashboardView({
             </div>
             <Link
               href={`/h/${encodeURIComponent(token)}/setup${viewerCaregiver ? `?who=${encodeURIComponent(viewerCaregiver.slug)}` : ""}`}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-subtle)] px-3.5 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-[var(--bg-subtle)] px-3.5 text-sm font-semibold text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] kitchen-transition"
             >
               <Smartphone className="h-4 w-4" aria-hidden="true" />
               <span>{UI_COPY.ownerView.openSetupCta}</span>
@@ -992,7 +992,7 @@ export function OwnerDashboardView({
                         type="button"
                         disabled={!isOn || Boolean(testingCaregiverId)}
                         onClick={() => void handleSendTestAlert(device)}
-                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[12px] border border-[var(--border-control)] bg-white px-3 text-xs font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[12px] border border-[var(--border-control)] bg-white px-3 text-xs font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {testingCaregiverId === device.caregiverId ? (
                           <Loader2

@@ -345,9 +345,9 @@ export function PhoneSetupWizard({
         {/* Member Selector */}
         <section
           aria-label={UI_COPY.setupView.personLabel}
-          className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4"
+          className="rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4"
         >
-          <p className="text-xs font-bold uppercase tracking-wide text-[var(--ink-tertiary)]">
+          <p className="text-xs font-semibold text-[var(--ink-secondary)]">
             {UI_COPY.setupView.personLabel}
           </p>
           <div className="mt-2.5 flex flex-wrap gap-2">
@@ -360,7 +360,7 @@ export function PhoneSetupWizard({
                   onClick={() => handleSelectPerson(person)}
                   aria-pressed={isSelected}
                   data-testid={`setup-member-${person.slug}`}
-                  className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border pl-1.5 pr-3.5 text-sm font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                  className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border pl-1.5 pr-3.5 text-sm font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                     isSelected
                       ? "border-[var(--sage-text)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
                       : "border-[var(--border-control)] bg-[var(--bg-canvas)] text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
@@ -398,7 +398,7 @@ export function PhoneSetupWizard({
             value={personalUrl}
             aria-label={UI_COPY.setupView.step1Title}
             onFocus={(e) => e.currentTarget.select()}
-            className="w-full rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2.5 text-xs sm:text-sm font-medium text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+            className="w-full rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-2.5 text-xs sm:text-sm font-medium text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
           />
 
           {showLinkFallback ? (
@@ -413,8 +413,8 @@ export function PhoneSetupWizard({
             data-testid="copy-personal-link-cta"
             className={`inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] px-4 font-display text-base font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
               linkCopied
-                ? "bg-[var(--sage-text)] text-white focus-visible:ring-[var(--sage-text)]"
-                : "border border-[var(--border-control)] bg-[var(--bg-subtle)] text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:ring-[var(--sage-text)]"
+                ? "bg-[var(--sage-text)] text-white focus-visible:ring-[var(--ring-focus)]"
+                : "border border-[var(--border-control)] bg-[var(--bg-subtle)] text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:ring-[var(--ring-focus)]"
             }`}
           >
             {linkCopied ? (
@@ -453,7 +453,7 @@ export function PhoneSetupWizard({
                 type="button"
                 onClick={() => setManualGuidePlatform("ios")}
                 aria-pressed={guidePlatform === "ios"}
-                className={`min-h-[44px] rounded-[8px] border px-3 text-xs font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                className={`min-h-[44px] rounded-[8px] border px-3 text-xs font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                   guidePlatform === "ios"
                     ? "border-[var(--sage-border)] bg-[var(--bg-card)] text-[var(--sage-strong)] shadow-[var(--shadow-pill)]"
                     : "border-transparent text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
@@ -465,7 +465,7 @@ export function PhoneSetupWizard({
                 type="button"
                 onClick={() => setManualGuidePlatform("android")}
                 aria-pressed={guidePlatform === "android"}
-                className={`min-h-[44px] rounded-[8px] border px-3 text-xs font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] ${
+                className={`min-h-[44px] rounded-[8px] border px-3 text-xs font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                   guidePlatform === "android"
                     ? "border-[var(--sage-border)] bg-[var(--bg-card)] text-[var(--sage-strong)] shadow-[var(--shadow-pill)]"
                     : "border-transparent text-[var(--ink-secondary)] hover:text-[var(--ink-primary)]"
@@ -588,7 +588,7 @@ export function PhoneSetupWizard({
             disabled={testingPing}
             onClick={() => void handleSendTestPing()}
             data-testid="send-test-ping-cta"
-            className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-subtle)] px-4 font-display text-base font-bold text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] disabled:opacity-65 kitchen-transition"
+            className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-subtle)] px-4 font-display text-base font-bold text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] disabled:opacity-65 kitchen-transition"
           >
             {testingPing ? (
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />

@@ -126,6 +126,6 @@ describe("API integration: cron/tick security, escalations, and push health", ()
     );
     await callCron({ tick: 3 });
     expect(harness.push.sent).toHaveLength(3); // OWNER_ESCALATION fired (not REMINDER)
-    expect(harness.push.sent[2].payload.notification.title).toContain("Meals Short");
+    expect(harness.push.sent[2].payload.notification.title).toContain("meals short");
   });
 });

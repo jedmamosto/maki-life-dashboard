@@ -122,9 +122,9 @@ export function AppHeader({
                 href={`${basePath}/settings${whoQuery}`}
                 aria-label={UI_COPY.ownerSettings.settingsTitle}
                 aria-current={activeTab === "settings" ? "page" : undefined}
-                className={`inline-flex h-11 w-11 items-center justify-center rounded-[12px] border kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
+                className={`inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-btn)] border kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                   activeTab === "settings"
-                    ? "border-[var(--indigo-border)] bg-[var(--indigo-bg)] text-[var(--indigo-text)]"
+                    ? "border-[var(--brand-border)] bg-[var(--brand-bg)] text-[var(--brand-strong)]"
                     : "border-[var(--border-hairline)] bg-[var(--bg-card)] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)]"
                 }`}
               >

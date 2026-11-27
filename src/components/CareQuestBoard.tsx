@@ -444,7 +444,7 @@ export function CareQuestBoard({
         );
         litterKeyRef.current = null;
         setSnapshot(result.snapshot);
-        showSnackbar("Saved: Litter box marked clean.");
+        showSnackbar(UI_COPY.litter.savedToast);
       } catch (err) {
         setErrorBanner(
           err instanceof CareApiError
@@ -599,7 +599,7 @@ export function CareQuestBoard({
         }
         aria-expanded={isExpanded}
         data-testid={`supply-card-${supply.key.toLowerCase()}`}
-        className={`flex min-h-[104px] flex-col justify-between rounded-[16px] border p-3.5 text-left kitchen-transition sunlit-card sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
+        className={`flex min-h-[104px] flex-col justify-between rounded-[var(--radius-card)] border p-3.5 text-left kitchen-transition sunlit-card sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
           isExpanded
             ? "border-[var(--border-control)] bg-[var(--bg-subtle)]"
             : "border-[var(--border-hairline)] bg-[var(--bg-card)] hover:border-[var(--border-control)]"
@@ -636,15 +636,23 @@ export function CareQuestBoard({
           <span
             className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${tone.badgeClass}`}
           >
-            {UI_COPY.supplies.levels[supply.level]}
+            <span className="optical-trim">{UI_COPY.supplies.levels[supply.level]}</span>
           </span>
-          <span className="truncate text-[11px] font-medium text-[var(--ink-tertiary)] tabular-nums">
+          <span className="truncate text-xs font-medium text-[var(--ink-tertiary)] tabular-nums">
             {supply.updatedLabel}
           </span>
         </div>
       </button>
     );
   };
+
+  const focalCard: "meals" | "litter" | null = (() => {
+    if (snapshot.meals.state === "OVERDUE") return "meals";
+    if (snapshot.litter.state === "OVERDUE") return "litter";
+    if (snapshot.meals.state === "DUE_NOW") return "meals";
+    if (snapshot.litter.state === "DUE_NOW") return "litter";
+    return null;
+  })();
 
   const renderMealsCard = (meals: DailyMealsView) => {
     const tone = getStateToneClasses(meals.state);
@@ -664,13 +672,12 @@ export function CareQuestBoard({
       return UI_COPY.meals.progressBody(meals.count, meals.target);
     })();
 
-    const isMealsActionFocus =
-      meals.state === "DUE_NOW" || meals.state === "OVERDUE";
+    const isMealsActionFocus = focalCard === "meals";
 
     return (
       <article
         data-testid="meals-today-card"
-        className={`rounded-[16px] bg-[var(--bg-card)] ${
+        className={`rounded-[var(--radius-card)] bg-[var(--bg-card)] ${
           isMealsActionFocus
             ? meals.state === "OVERDUE"
               ? "border-2 border-[var(--coral-accent)] sunlit-hero-card p-4 sm:p-5"
@@ -682,7 +689,7 @@ export function CareQuestBoard({
           <div className="flex items-center gap-3 min-w-0">
             <span
               aria-hidden="true"
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] ${
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-btn)] ${
                 meals.state === "OVERDUE"
                   ? "bg-[var(--coral-bg)] text-[var(--coral-strong)]"
                   : meals.state === "DUE_NOW"
@@ -693,7 +700,7 @@ export function CareQuestBoard({
               <Utensils className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <h2 className="font-display text-lg font-bold tracking-[-0.01em] text-[var(--ink-primary)] truncate">
+              <h2 className="font-display text-lg font-bold tracking-[-0.01em] text-[var(--ink-primary)]">
                 {UI_COPY.meals.title}
               </h2>
               <p className="text-xs font-medium text-[var(--ink-tertiary)] tabular-nums">
@@ -705,7 +712,7 @@ export function CareQuestBoard({
           {meals.isGoalMet ? (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--sage-border)] bg-[var(--sage-bg)] px-3 py-1 text-xs font-bold text-[var(--sage-strong)] tabular-nums">
               <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>
+              <span className="optical-trim">
                 {UI_COPY.meals.goalDoneBadge} ({meals.count} of {meals.target})
               </span>
             </span>
@@ -714,7 +721,7 @@ export function CareQuestBoard({
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold tabular-nums ${tone.badge}`}
             >
               <StateIcon state={meals.state} />
-              <span>
+              <span className="optical-trim">
                 {meals.count} of {meals.target}
               </span>
             </span>
@@ -735,14 +742,14 @@ export function CareQuestBoard({
           />
         </div>
 
-        <p className="mt-3 text-sm sm:text-base text-[var(--ink-secondary)] leading-relaxed">
+        <p className="mt-3 max-w-prose text-sm sm:text-base text-[var(--ink-secondary)] leading-relaxed">
           {mealsBody}
         </p>
 
         {meals.entries.length > 0 ? (
           <ul
             data-testid="meal-entries-list"
-            className="mt-3 space-y-2"
+            className="mt-3 divide-y divide-[var(--sage-border)]/70 rounded-[var(--radius-btn)] border border-[var(--sage-border)] bg-[var(--sage-bg)]/45"
           >
             {meals.entries.map((entry, idx) => {
               const isUndoInFlight = inFlightAction === `undo:${entry.id}`;
@@ -753,7 +760,7 @@ export function CareQuestBoard({
                 <li
                   key={entry.id}
                   data-testid={`meal-entry-${idx}`}
-                  className="rounded-[12px] border border-[var(--sage-border)] bg-[var(--sage-bg)]/50 p-2.5 space-y-2"
+                  className="p-2.5 space-y-2.5"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
@@ -779,7 +786,7 @@ export function CareQuestBoard({
                           disabled={Boolean(inFlightAction)}
                           data-testid={`undo-meal-${idx}`}
                           aria-label={`Undo Meal #${idx + 1}`}
-                          className="inline-flex min-h-[44px] items-center justify-center gap-1 rounded-[10px] border border-[var(--border-control)] bg-[var(--bg-card)] px-2.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] disabled:opacity-60"
+                          className="inline-flex min-h-[44px] items-center justify-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border-control)] bg-[var(--bg-card)] px-2.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] disabled:opacity-60 kitchen-transition"
                         >
                           {isUndoInFlight ? (
                             <Loader2
@@ -802,7 +809,7 @@ export function CareQuestBoard({
                         }
                         aria-expanded={showAttrList}
                         data-testid={`change-name-${idx}`}
-                        className="inline-flex min-h-[44px] items-center justify-center rounded-[10px] border border-[var(--border-control)] bg-[var(--bg-card)] px-2.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-control)] bg-[var(--bg-card)] px-2.5 text-xs font-semibold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] kitchen-transition"
                       >
                         <span>{UI_COPY.meals.changeNameCta}</span>
                       </button>
@@ -810,7 +817,7 @@ export function CareQuestBoard({
                   </div>
 
                   {showAttrList ? (
-                    <div className="rounded-[10px] border border-[var(--border-hairline)] bg-[var(--bg-canvas)] p-2.5">
+                    <div className="border-t border-[var(--sage-border)]/70 pt-2.5">
                       <p className="mb-2 text-xs font-semibold text-[var(--ink-secondary)]">
                         {UI_COPY.avatarPicker.switchSubtitle}
                       </p>
@@ -831,7 +838,7 @@ export function CareQuestBoard({
                                     person.id
                                   )
                                 }
-                                className={`flex min-h-[44px] items-center gap-2 rounded-[10px] border px-2.5 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
+                                className={`flex min-h-[44px] items-center gap-2 rounded-[var(--radius-sm)] border px-2.5 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] kitchen-transition ${
                                   isCurrent
                                     ? "border-[var(--sage-text)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
                                     : "border-[var(--border-hairline)] bg-[var(--bg-card)] text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
@@ -942,8 +949,7 @@ export function CareQuestBoard({
 
   const allMealsDoneAndSafe =
     snapshot.survivability.status === "SAFE" && snapshot.meals.isGoalMet;
-  const isLitterActionFocus =
-    snapshot.litter.state === "DUE_NOW" || snapshot.litter.state === "OVERDUE";
+  const isLitterActionFocus = focalCard === "litter";
 
   return (
     <div className="min-h-screen bg-[var(--bg-canvas)] pb-24">
@@ -1083,7 +1089,7 @@ export function CareQuestBoard({
 
           <article
             data-testid="litter-quest-card"
-            className={`rounded-[16px] bg-[var(--bg-card)] ${
+            className={`rounded-[var(--radius-card)] bg-[var(--bg-card)] ${
               isLitterActionFocus
                 ? snapshot.litter.state === "OVERDUE"
                   ? "border-2 border-[var(--coral-accent)] sunlit-hero-card p-4 sm:p-5"
@@ -1095,12 +1101,12 @@ export function CareQuestBoard({
               <div className="flex items-center gap-3 min-w-0">
                 <span
                   aria-hidden="true"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-[var(--bg-subtle)] text-[var(--ink-primary)]"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-btn)] bg-[var(--bg-subtle)] text-[var(--ink-primary)]"
                 >
                   <Sparkles className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="font-display text-lg font-bold tracking-[-0.01em] text-[var(--ink-primary)] truncate">
+                  <h2 className="font-display text-lg font-bold tracking-[-0.01em] text-[var(--ink-primary)]">
                     {UI_COPY.litter.title}
                   </h2>
                   <p className="text-xs font-medium text-[var(--ink-tertiary)]">
@@ -1113,11 +1119,11 @@ export function CareQuestBoard({
                 className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${litterTone.badge}`}
               >
                 <StateIcon state={snapshot.litter.state} />
-                <span>{UI_COPY.litter.states[snapshot.litter.state]}</span>
+                <span className="optical-trim">{UI_COPY.litter.states[snapshot.litter.state]}</span>
               </span>
             </div>
 
-            <p className="mt-3 text-sm sm:text-base text-[var(--ink-secondary)] leading-relaxed">
+            <p className="mt-3 max-w-prose text-sm sm:text-base text-[var(--ink-secondary)] leading-relaxed">
               {litterBody}
             </p>
 
@@ -1201,7 +1207,7 @@ export function CareQuestBoard({
         {/* CHUNK 3: Compact 2-Column Fuel Gauge Strip + Weekly Play Card */}
         <section aria-label="Supplies and Weekly Play" className="space-y-4">
           <div className="space-y-2.5">
-            <h2 className="font-display text-sm font-bold uppercase tracking-wide text-[var(--ink-tertiary)]">
+            <h2 className="font-display text-sm font-bold text-[var(--ink-secondary)]">
               {UI_COPY.supplies.title}
             </h2>
             <div className="grid grid-cols-2 gap-3">
@@ -1212,7 +1218,7 @@ export function CareQuestBoard({
             {expandedSupplyKey ? (
               <div
                 data-testid="supply-level-editor"
-                className="rounded-[16px] border border-[var(--border-control)] bg-[var(--bg-card)] p-4"
+                className="rounded-[var(--radius-card)] border border-[var(--border-control)] bg-[var(--bg-card)] p-4"
               >
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-display text-sm font-bold text-[var(--ink-primary)]">
@@ -1221,7 +1227,7 @@ export function CareQuestBoard({
                   <button
                     type="button"
                     onClick={() => setExpandedSupplyKey(null)}
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[10px] border border-[var(--border-hairline)] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[var(--radius-sm)] border border-[var(--border-hairline)] text-[var(--ink-secondary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
                     aria-label={UI_COPY.avatarPicker.closeLabel}
                   >
                     <X className="h-4 w-4" aria-hidden="true" />
@@ -1243,7 +1249,7 @@ export function CareQuestBoard({
                         onClick={() =>
                           void handleUpdateSupply(expandedSupplyKey, lvl)
                         }
-                        className={`min-h-[44px] rounded-[12px] border px-3 text-sm font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
+                        className={`min-h-[44px] rounded-[var(--radius-btn)] border px-3 text-sm font-bold kitchen-transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] ${
                           isSelected
                             ? "border-[var(--sage-text)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
                             : "border-[var(--border-control)] bg-[var(--bg-canvas)] text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
@@ -1260,21 +1266,21 @@ export function CareQuestBoard({
 
           <article
             data-testid="weekly-play-card"
-            className="rounded-[16px] border border-[var(--indigo-border)] bg-[var(--indigo-bg)] sunlit-card p-4 sm:p-5"
+            className="rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <span
                   aria-hidden="true"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] bg-white border border-[var(--indigo-border)] text-[var(--indigo-text)]"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--radius-btn)] bg-[var(--pink-bg)] border border-[var(--pink-border)] text-[var(--pink-text)]"
                 >
                   <Footprints className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
-                  <h2 className="font-display text-lg font-bold tracking-[-0.01em] text-[var(--indigo-strong)] truncate">
+                  <h2 className="font-display text-lg font-bold tracking-[-0.01em] text-[var(--ink-primary)]">
                     {UI_COPY.play.title}
                   </h2>
-                  <p className="text-xs font-medium text-[var(--indigo-text)]">
+                  <p className="text-xs font-medium text-[var(--ink-tertiary)]">
                     {UI_COPY.play.bonusNote}
                   </p>
                 </div>
@@ -1283,14 +1289,16 @@ export function CareQuestBoard({
               {snapshot.weeklyPlay.isGoalMet ? (
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--sage-border)] bg-[var(--sage-bg)] px-3 py-1 text-xs font-bold text-[var(--sage-strong)] tabular-nums">
                   <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span>
+                  <span className="optical-trim">
                     {UI_COPY.play.goalDoneBadge} ({snapshot.weeklyPlay.count} of{" "}
                     {snapshot.weeklyPlay.target})
                   </span>
                 </span>
               ) : (
-                <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--indigo-border)] bg-white px-3 py-1 text-xs font-bold text-[var(--indigo-strong)] tabular-nums">
-                  {snapshot.weeklyPlay.count} of {snapshot.weeklyPlay.target}
+                <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-1 text-xs font-bold text-[var(--ink-secondary)] tabular-nums">
+                  <span className="optical-trim">
+                    {snapshot.weeklyPlay.count} of {snapshot.weeklyPlay.target}
+                  </span>
                 </span>
               )}
             </div>
@@ -1309,12 +1317,12 @@ export function CareQuestBoard({
                 return (
                   <div
                     key={stampNumber}
-                    className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-[12px] border text-xs font-bold tabular-nums kitchen-transition ${
+                    className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-[var(--radius-btn)] border text-xs font-bold tabular-nums kitchen-transition ${
                       isStamped
                         ? snapshot.weeklyPlay.isGoalMet
-                          ? "border-[var(--sage-border)] bg-[var(--sage-text)] text-white shadow-xs"
-                          : "border-[var(--indigo-text)] bg-[var(--indigo-text)] text-white shadow-xs"
-                        : "border-[var(--indigo-border)] bg-white/85 text-[var(--indigo-strong)]"
+                          ? "border-[var(--sage-border)] bg-[var(--sage-bg)] text-[var(--sage-strong)]"
+                          : "border-[var(--pink-border)] bg-[var(--pink-bg)] text-[var(--pink-strong)]"
+                        : "border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--ink-secondary)]"
                     }`}
                   >
                     <Footprints className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1324,7 +1332,7 @@ export function CareQuestBoard({
               })}
             </div>
 
-            <p className="mt-3 text-sm text-[var(--ink-primary)] leading-relaxed">
+            <p className="mt-3 max-w-prose text-sm text-[var(--ink-secondary)] leading-relaxed">
               {snapshot.weeklyPlay.isGoalMet
                 ? UI_COPY.play.goalMetBody(snapshot.weeklyPlay.target)
                 : UI_COPY.play.emptyBody}
@@ -1335,7 +1343,7 @@ export function CareQuestBoard({
                 {snapshot.weeklyPlay.recentEvents.slice(0, 3).map((ev) => (
                   <span
                     key={ev.id}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[var(--indigo-border)] bg-white/90 px-2.5 py-1 text-xs font-medium text-[var(--indigo-strong)]"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-hairline)] bg-[var(--bg-canvas)] px-2.5 py-1 text-xs font-medium text-[var(--ink-secondary)]"
                   >
                     <CaregiverBadge
                       initials={ev.caregiver.avatarInitials}
@@ -1356,7 +1364,7 @@ export function CareQuestBoard({
                 onClick={() => void handleLogPlay()}
                 disabled={Boolean(inFlightAction)}
                 data-testid="play-log-cta"
-                className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--indigo-text)] px-4 font-display text-base font-bold text-white hover:bg-[var(--indigo-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)] focus-visible:ring-offset-2 disabled:opacity-65 kitchen-transition sunlit-press"
+                className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-[var(--bg-subtle)] px-4 font-display text-base font-bold text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] focus-visible:ring-offset-2 disabled:opacity-65 kitchen-transition sunlit-press"
               >
                 {inFlightAction === "play:log" ? (
                   <>
@@ -1365,7 +1373,7 @@ export function CareQuestBoard({
                   </>
                 ) : (
                   <>
-                    <Footprints className="h-5 w-5" aria-hidden="true" />
+                    <Footprints className="h-5 w-5 text-[var(--pink-text)]" aria-hidden="true" />
                     <span>
                       {snapshot.weeklyPlay.isGoalMet
                         ? UI_COPY.play.extraCta
@@ -1384,7 +1392,7 @@ export function CareQuestBoard({
           role="status"
           aria-live="polite"
           data-testid="bottom-undo-snackbar"
-          className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-center justify-between gap-2 rounded-[16px] bg-[var(--ink-primary)] px-4 py-3 text-white shadow-lg safe-bottom"
+          className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-md items-center justify-between gap-2 rounded-[var(--radius-card)] bg-[var(--ink-primary)] px-4 py-3 text-white shadow-lg safe-bottom"
         >
           <span className="text-sm font-medium">{snackbar.message}</span>
           <div className="flex shrink-0 items-center gap-1.5">
@@ -1397,17 +1405,17 @@ export function CareQuestBoard({
                     void handleUndoMeal(snackbar.undoLogId);
                   }
                 }}
-                className="inline-flex min-h-[44px] items-center gap-1 rounded-[10px] border border-[var(--sage-border)] bg-[var(--sage-strong)] px-3 text-xs font-bold text-white hover:bg-[var(--sage-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="inline-flex min-h-[44px] items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--sage-border)] bg-[var(--sage-strong)] px-3 text-xs font-bold text-white hover:bg-[var(--sage-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 <Undo2 className="h-3.5 w-3.5" aria-hidden="true" />
-                <span>Undo</span>
+                <span>{UI_COPY.meals.undoCta}</span>
               </button>
             ) : null}
             <button
               type="button"
               onClick={() => setSnackbar(null)}
               aria-label={UI_COPY.avatarPicker.closeLabel}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-[10px] text-slate-300 hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-sm)] text-[var(--bg-subtle)]/80 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white kitchen-transition"
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </button>

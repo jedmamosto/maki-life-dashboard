@@ -15,19 +15,17 @@ export function BoardLoadingSkeleton() {
         </div>
       </div>
 
-      <main className="mx-auto max-w-2xl space-y-4 px-4 py-5">
+      <main className="mx-auto max-w-2xl space-y-5 px-4 py-5">
         <div className="h-28 w-full animate-pulse rounded-[20px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card" />
         <div className="space-y-3">
-          <div className="h-40 w-full animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
-          <div className="h-40 w-full animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
-          <div className="h-40 w-full animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
-          <div className="h-40 w-full animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
+          <div className="h-44 w-full animate-pulse rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
+          <div className="h-40 w-full animate-pulse rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="h-28 animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
-          <div className="h-28 animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
+          <div className="h-28 animate-pulse rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
+          <div className="h-28 animate-pulse rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
         </div>
-        <div className="h-36 w-full animate-pulse rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
+        <div className="h-36 w-full animate-pulse rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-card)]" />
       </main>
     </div>
   );

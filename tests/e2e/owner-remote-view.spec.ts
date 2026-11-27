@@ -71,7 +71,7 @@ test.describe("Owner Remote View: 14-Day History, Push Health, and Messenger Nud
       name: "Phone Alerts Health",
     });
     await expect(
-      pushHealth.getByText(/Helper Devices:\s*0/),
+      pushHealth.getByText(/Helper devices:\s*0/),
     ).toBeVisible();
     await expect(pushHealth.getByText("Alerts Off")).toBeVisible();
     await expect(pushHealth.getByText(/Android Chrome/)).toBeVisible();

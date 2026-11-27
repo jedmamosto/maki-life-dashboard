@@ -89,7 +89,7 @@ function BadgeColorPicker({ value, onChange }: BadgeColorPickerProps) {
             aria-pressed={selected}
             aria-label={`${UI_COPY.ownerSettings.colorLabel}: ${UI_COPY.ownerSettings.colorNames[colorKey]}`}
             onClick={() => onChange(colorKey)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
           >
             <span
               style={{ backgroundColor: AVATAR_COLOR_MAP[colorKey] }}
@@ -456,7 +456,7 @@ export function OwnerSettingsPanel({
           onClick={() => void handleLockSettings()}
           disabled={Boolean(savingSection)}
           data-testid="lock-settings-cta"
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-card)] px-4 text-sm font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)]"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-[var(--bg-card)] px-4 text-sm font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] kitchen-transition"
         >
           <Lock className="h-4 w-4" aria-hidden="true" />
           <span>{UI_COPY.ownerSettings.lockCta}</span>
@@ -486,10 +486,10 @@ export function OwnerSettingsPanel({
       {/* Schedule & Alert Email */}
       <form
         onSubmit={(e) => void handleSaveSchedule(e)}
-        className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5 space-y-4"
+        className="rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-card)] sunlit-card p-4 sm:p-5 space-y-4"
       >
         <h2 className="font-display text-lg font-bold text-[var(--ink-primary)]">
-          Meal Times and Goals
+          {UI_COPY.ownerSettings.scheduleTitle}
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -498,7 +498,7 @@ export function OwnerSettingsPanel({
               htmlFor="daily-meal-goal"
               className="block text-sm font-semibold text-[var(--ink-primary)]"
             >
-              Daily Meal Goal
+              {UI_COPY.ownerSettings.dailyMealGoalLabel}
             </label>
             <input
               id="daily-meal-goal"
@@ -508,7 +508,7 @@ export function OwnerSettingsPanel({
               required
               value={dailyMealGoal}
               onChange={(e) => setDailyMealGoal(e.target.value)}
-              className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
+              className="mt-1.5 min-h-[44px] w-full rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
             />
           </div>
 
@@ -517,7 +517,7 @@ export function OwnerSettingsPanel({
               htmlFor="meal-reminder-time"
               className="block text-sm font-semibold text-[var(--ink-primary)]"
             >
-              Daily Meal Check-in Time
+              {UI_COPY.ownerSettings.mealReminderTimeLabel}
             </label>
             <input
               id="meal-reminder-time"
@@ -525,7 +525,7 @@ export function OwnerSettingsPanel({
               required
               value={mealReminderTime}
               onChange={(e) => setMealReminderTime(e.target.value)}
-              className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
+              className="mt-1.5 min-h-[44px] w-full rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
             />
           </div>
 
@@ -534,7 +534,7 @@ export function OwnerSettingsPanel({
               htmlFor="litter-hours"
               className="block text-sm font-semibold text-[var(--ink-primary)]"
             >
-              Litter Interval (Hours)
+              {UI_COPY.ownerSettings.litterIntervalLabel}
             </label>
             <input
               id="litter-hours"
@@ -544,7 +544,7 @@ export function OwnerSettingsPanel({
               required
               value={litterIntervalHours}
               onChange={(e) => setLitterIntervalHours(e.target.value)}
-              className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+              className="mt-1.5 min-h-[44px] w-full rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
             />
           </div>
 
@@ -553,7 +553,7 @@ export function OwnerSettingsPanel({
               htmlFor="weekly-play-goal"
               className="block text-sm font-semibold text-[var(--ink-primary)]"
             >
-              Weekly Play Goal
+              {UI_COPY.ownerSettings.weeklyPlayGoalLabel}
             </label>
             <input
               id="weekly-play-goal"
@@ -563,7 +563,7 @@ export function OwnerSettingsPanel({
               required
               value={weeklyPlayGoal}
               onChange={(e) => setWeeklyPlayGoal(e.target.value)}
-              className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+              className="mt-1.5 min-h-[44px] w-full rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
             />
           </div>
         </div>
@@ -573,14 +573,14 @@ export function OwnerSettingsPanel({
             htmlFor="owner-email"
             className="block text-sm font-semibold text-[var(--ink-primary)]"
           >
-            Owner Alert Email
+            {UI_COPY.ownerSettings.ownerEmailLabel}
           </label>
           <input
             id="owner-email"
             type="email"
             value={ownerEmail}
             onChange={(e) => setOwnerEmail(e.target.value)}
-            className="mt-1.5 min-h-[44px] w-full rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+            className="mt-1.5 min-h-[44px] w-full rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
           />
         </div>
 
@@ -588,12 +588,12 @@ export function OwnerSettingsPanel({
           type="submit"
           disabled={Boolean(savingSection)}
           data-testid="save-schedule-cta"
-          className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] bg-[var(--brand-primary)] px-4 font-display text-base font-bold text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] focus-visible:ring-offset-2 disabled:opacity-65"
+          className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] bg-[var(--brand-primary)] px-4 font-display text-base font-bold text-[var(--brand-on-primary)] hover:bg-[var(--brand-strong)] sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] focus-visible:ring-offset-2 disabled:opacity-65 kitchen-transition"
         >
           {savingSection === "schedule" ? (
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
           ) : null}
-          <span>Save Schedule and Email</span>
+          <span>{UI_COPY.ownerSettings.saveScheduleCta}</span>
         </button>
       </form>
 
@@ -632,7 +632,7 @@ export function OwnerSettingsPanel({
                       colorKey={person.avatarColor}
                       size="sm"
                     />
-                    <span className="text-xs font-bold uppercase tracking-wide text-[var(--ink-tertiary)]">
+                    <span className="text-xs font-semibold text-[var(--ink-tertiary)]">
                       {UI_COPY.avatarPicker.roles[person.role]}
                     </span>
                   </div>
@@ -641,7 +641,7 @@ export function OwnerSettingsPanel({
                     <button
                       type="button"
                       onClick={() => void handleCopyPersonLink(person)}
-                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-xs font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                      className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border-control)] bg-white px-3 text-xs font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
                     >
                       {copiedSlug === person.slug ? (
                         <>
@@ -651,7 +651,7 @@ export function OwnerSettingsPanel({
                       ) : (
                         <>
                           <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                          <span>Copy Link</span>
+                          <span>{UI_COPY.ownerSettings.copyLinkCta}</span>
                         </>
                       )}
                     </button>
@@ -697,7 +697,7 @@ export function OwnerSettingsPanel({
                           )
                         );
                       }}
-                      className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-sm font-semibold text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                      className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-sm font-semibold text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
                     />
                   </div>
 
@@ -724,7 +724,7 @@ export function OwnerSettingsPanel({
                           )
                         );
                       }}
-                      className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-center text-sm font-bold uppercase text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                      className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-center text-sm font-bold uppercase text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
                     />
                   </div>
 
@@ -747,7 +747,7 @@ export function OwnerSettingsPanel({
                           )
                         );
                       }}
-                      className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-2.5 text-sm font-semibold text-[var(--ink-primary)] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                      className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-2.5 text-sm font-semibold text-[var(--ink-primary)] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
                     >
                       {CAREGIVER_ROLES.map((role) => (
                         <option key={role} value={role}>
@@ -798,12 +798,12 @@ export function OwnerSettingsPanel({
           disabled={Boolean(savingSection)}
           onClick={() => void handleSaveRoster()}
           data-testid="save-people-cta"
-          className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-subtle)] px-4 font-display text-base font-bold text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)] disabled:opacity-65"
+          className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-[var(--bg-subtle)] px-4 font-display text-base font-bold text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] disabled:opacity-65 kitchen-transition"
         >
           {savingSection === "roster" ? (
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
           ) : null}
-          <span>Save People</span>
+          <span>{UI_COPY.ownerSettings.savePeopleCta}</span>
         </button>
 
         {/* Add New Person */}
@@ -850,7 +850,7 @@ export function OwnerSettingsPanel({
                     );
                   }
                 }}
-                className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-sm font-semibold text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-sm font-semibold text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
               />
             </div>
 
@@ -875,7 +875,7 @@ export function OwnerSettingsPanel({
                   setNewPersonInitialsTouched(value.length > 0);
                   setNewPersonInitials(value);
                 }}
-                className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-center text-sm font-bold uppercase text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-3 text-center text-sm font-bold uppercase text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
               />
             </div>
 
@@ -892,7 +892,7 @@ export function OwnerSettingsPanel({
                 onChange={(e) =>
                   setNewPersonRole(e.target.value as CaregiverRole)
                 }
-                className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-2.5 text-sm font-semibold text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--sage-text)]"
+                className="min-h-[44px] w-full rounded-[10px] border border-[var(--border-control)] bg-white px-2.5 text-sm font-semibold text-[var(--ink-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
               >
                 {CAREGIVER_ROLES.map((role) => (
                   <option key={role} value={role}>
@@ -929,14 +929,14 @@ export function OwnerSettingsPanel({
       {/* Change PIN */}
       <form
         onSubmit={(e) => void handleSavePin(e)}
-        className="rounded-[16px] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4 sm:p-5 space-y-3"
+        className="rounded-[var(--radius-card)] border border-[var(--border-hairline)] bg-[var(--bg-card)] p-4 sm:p-5 space-y-3"
       >
         <h2 className="font-display text-lg font-bold text-[var(--ink-primary)]">
-          Change 4-Digit Owner PIN
+          {UI_COPY.ownerSettings.changePinTitle}
         </h2>
         <div className="flex flex-wrap gap-3">
           <label htmlFor="new-owner-pin" className="sr-only">
-            New 4-Digit PIN
+            New 4-digit PIN
           </label>
           <input
             id="new-owner-pin"
@@ -948,25 +948,25 @@ export function OwnerSettingsPanel({
               setNewPin(e.target.value.replace(/\D/g, "").slice(0, 4))
             }
             placeholder="New 4 digits"
-            className="min-h-[44px] flex-1 min-w-[160px] rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)]"
+            className="min-h-[44px] flex-1 min-w-[160px] rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-3 text-base text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
           />
           <button
             type="submit"
             disabled={Boolean(savingSection)}
-            className="inline-flex min-h-[44px] items-center justify-center rounded-[12px] bg-[var(--indigo-text)] px-5 text-sm font-bold text-white hover:bg-[var(--indigo-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)] disabled:opacity-65"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-btn)] bg-[var(--brand-primary)] px-5 text-sm font-bold text-white hover:bg-[var(--brand-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] disabled:opacity-65 kitchen-transition"
           >
-            Update PIN
+            {UI_COPY.ownerSettings.updatePinCta}
           </button>
         </div>
       </form>
 
       {/* Rotate Secret Home Link */}
       <section
-        aria-label="Rotate Secret Home Link"
-        className="rounded-[16px] border border-[var(--coral-border)] bg-[var(--coral-bg)] p-4 sm:p-5 space-y-3"
+        aria-label={UI_COPY.ownerSettings.rotateStartCta}
+        className="rounded-[var(--radius-card)] border border-[var(--coral-border)] bg-[var(--coral-bg)] p-4 sm:p-5 space-y-3"
       >
         <h2 className="font-display text-lg font-bold text-[var(--coral-strong)]">
-          Create a New Home Link
+          {UI_COPY.ownerSettings.rotateTitle}
         </h2>
         <p className="text-sm text-[var(--ink-primary)]">
           {UI_COPY.ownerSettings.rotateWarning}
@@ -978,8 +978,8 @@ export function OwnerSettingsPanel({
             readOnly
             value={rotatedNewLink}
             onFocus={(e) => e.currentTarget.select()}
-            aria-label="New Home Link"
-            className="w-full rounded-[12px] border border-[var(--sage-border)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--ink-primary)]"
+            aria-label="New home link"
+            className="w-full rounded-[var(--radius-btn)] border border-[var(--sage-border)] bg-white px-3 py-2.5 text-sm font-semibold text-[var(--ink-primary)]"
           />
         ) : null}
 
@@ -989,10 +989,10 @@ export function OwnerSettingsPanel({
             disabled={Boolean(savingSection)}
             onClick={() => setConfirmRotate(true)}
             data-testid="rotate-token-start-cta"
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-[12px] border border-[var(--coral-border)] bg-white px-4 text-sm font-bold text-[var(--coral-strong)] hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral-text)]"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-btn)] border border-[var(--coral-border)] bg-white px-4 text-sm font-bold text-[var(--coral-strong)] hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral-text)]"
           >
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            <span>Rotate Home Link</span>
+            <span>{UI_COPY.ownerSettings.rotateStartCta}</span>
           </button>
         ) : (
           <div className="flex flex-wrap gap-2">
@@ -1001,20 +1001,20 @@ export function OwnerSettingsPanel({
               disabled={Boolean(savingSection)}
               onClick={() => void handleRotateToken()}
               data-testid="rotate-token-confirm-cta"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-[12px] bg-[var(--coral-text)] px-4 text-sm font-bold text-white hover:bg-[var(--coral-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral-text)]"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-btn)] bg-[var(--coral-text)] px-4 text-sm font-bold text-white hover:bg-[var(--coral-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--coral-text)]"
             >
               {savingSection === "rotate" ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : null}
-              <span>Yes, Create New Link</span>
+              <span>{UI_COPY.ownerSettings.rotateConfirmCta}</span>
             </button>
             <button
               type="button"
               disabled={Boolean(savingSection)}
               onClick={() => setConfirmRotate(false)}
-              className="inline-flex min-h-[44px] items-center rounded-[12px] border border-[var(--border-control)] bg-white px-4 text-sm font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
+              className="inline-flex min-h-[44px] items-center rounded-[var(--radius-btn)] border border-[var(--border-control)] bg-white px-4 text-sm font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)]"
             >
-              Cancel
+              {UI_COPY.ownerSettings.cancelCta}
             </button>
           </div>
         )}

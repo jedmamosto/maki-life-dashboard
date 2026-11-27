@@ -141,7 +141,7 @@ export function OwnerPinGate({ token, onUnlocked }: OwnerPinGateProps) {
             }}
             placeholder="0000"
             data-testid="owner-pin-input"
-            className="w-full min-h-[56px] rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-4 text-center font-display text-2xl font-bold tracking-[0.5em] text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)]"
+            className="w-full min-h-[56px] rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] px-4 text-center font-display text-2xl font-bold tracking-[0.5em] text-[var(--ink-primary)] tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
           />
         </div>
 
@@ -171,7 +171,7 @@ export function OwnerPinGate({ token, onUnlocked }: OwnerPinGateProps) {
               disabled={submitting}
               onClick={() => handleAppendDigit(digit)}
               data-testid={`pin-key-${digit}`}
-              className="min-h-[56px] min-w-[56px] rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] font-display text-xl font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)] tabular-nums"
+              className="min-h-[56px] min-w-[56px] rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] font-display text-xl font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] sunlit-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] tabular-nums"
             >
               {digit}
             </button>
@@ -184,7 +184,7 @@ export function OwnerPinGate({ token, onUnlocked }: OwnerPinGateProps) {
               setPin("");
               setError(null);
             }}
-            className="min-h-[56px] min-w-[56px] rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-sm font-bold text-[var(--ink-secondary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)]"
+            className="min-h-[56px] min-w-[56px] rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-sm font-bold text-[var(--ink-secondary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
           >
             Clear
           </button>
@@ -194,7 +194,7 @@ export function OwnerPinGate({ token, onUnlocked }: OwnerPinGateProps) {
             disabled={submitting}
             onClick={() => handleAppendDigit("0")}
             data-testid="pin-key-0"
-            className="min-h-[56px] min-w-[56px] rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] font-display text-xl font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)] tabular-nums"
+            className="min-h-[56px] min-w-[56px] rounded-[12px] border border-[var(--border-control)] bg-[var(--bg-canvas)] font-display text-xl font-bold text-[var(--ink-primary)] hover:bg-[var(--bg-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)] tabular-nums"
           >
             0
           </button>
@@ -207,7 +207,7 @@ export function OwnerPinGate({ token, onUnlocked }: OwnerPinGateProps) {
               setError(null);
             }}
             aria-label="Backspace"
-            className="inline-flex min-h-[56px] min-w-[56px] items-center justify-center rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--indigo-text)]"
+            className="inline-flex min-h-[56px] min-w-[56px] items-center justify-center rounded-[12px] border border-[var(--border-hairline)] bg-[var(--bg-subtle)] text-[var(--ink-primary)] hover:bg-[var(--border-hairline)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring-focus)]"
           >
             <Delete className="h-5 w-5" aria-hidden="true" />
           </button>
@@ -222,7 +222,7 @@ export function OwnerPinGate({ token, onUnlocked }: OwnerPinGateProps) {
           {submitting ? (
             <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
           ) : null}
-          <span>Unlock Settings</span>
+          <span>{UI_COPY.ownerSettings.unlockCta}</span>
         </button>
       </form>
     </section>

@@ -10,7 +10,7 @@ interface CaregiverBadgeProps {
 }
 
 const SIZE_CLASSES: Record<NonNullable<CaregiverBadgeProps["size"]>, string> = {
-  sm: "h-7 w-7 text-[11px]",
+  sm: "h-7 w-7 text-[0.6875rem]",
   md: "h-9 w-9 text-xs",
   lg: "h-11 w-11 text-sm",
 };

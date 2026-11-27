@@ -99,7 +99,7 @@
   --color-ink-secondary: var(--ink-secondary);
   --color-ink-tertiary: var(--ink-tertiary);
   --font-sans: var(--font-dm-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-display: var(--font-fraunces), Georgia, "Iowan Old Style", serif;
+  --font-display: var(--font-nunito), ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 html {
@@ -116,8 +116,38 @@ body {
   line-height: 1.5;
 }
 
+h1,
+h2,
+h3,
+th {
+  text-wrap: balance;
+}
+
+p,
+li {
+  text-wrap: pretty;
+}
+
 .font-display {
   font-family: var(--font-display);
+}
+
+@supports (text-box: trim-both cap alphabetic) {
+  .optical-trim {
+    display: block;
+    text-box: trim-both cap alphabetic;
+  }
+}
+
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: var(--bg-scrim);
+  backdrop-filter: blur(2px);
 }
 
 .tabular-nums {
